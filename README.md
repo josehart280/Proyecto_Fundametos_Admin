@@ -17,16 +17,7 @@ Proyecto desarrollado para la carrera de Administracion de Sistemas Informaticos
 npm install
 ```
 
-## Configuracion
 
-Crear archivo `.env` con:
-```env
-DB_HOST=tiusr8pl.cuc-carrera-ti.ac.cr
-DB_USER=ProyectoAdmin
-DB_PASSWORD=Proyectos0123
-DB_NAME=Admin_Proyectos
-PORT=3000
-```
 
 ## Uso
 
