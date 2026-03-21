@@ -1,6 +1,6 @@
 # Proyecto Fundamentos Admin
 
-Servidor Node.js basico con conexion a MySQL para proyecto de universidad.
+Servidor Node.js basico con conexion a SQL Server para proyecto de universidad.
 
 ## Descripcion
 
@@ -9,7 +9,7 @@ Proyecto desarrollado para la carrera de Administracion de Sistemas Informaticos
 ## Requisitos
 
 - Node.js 18+
-- MySQL 8+
+- SQL Server 2016+
 
 ## Instalacion
 
@@ -40,7 +40,7 @@ El servidor iniciara en http://localhost:3000
 
 | Metodo | Ruta | Descripcion |
 |--------|------|-------------|
-| GET | /api/test | Probar conexion a MySQL |
+| GET | /api/test | Probar conexion a SQL Server |
 | GET | /api/usuarios | Obtener lista de usuarios |
 
 ## Estructura
@@ -48,16 +48,16 @@ El servidor iniciara en http://localhost:3000
 ```
 /public     - Archivos estaticos
 /server.js  - Servidor principal
-/db.js      - Conexion a MySQL
+/db.js      - Conexion a SQL Server
 ```
 
 ---
 
 ## Historial de Funcionalidades
 
-### 2026-03-20 - Servidor MySQL inicial
+### 2026-03-20 - Servidor SQL Server inicial
 
-- Conexion a base de datos MySQL via mysql2
+- Conexion a base de datos SQL Server via mssql
 - API REST con rutas /api/test y /api/usuarios
 - Servidor de archivos estaticos desde /public
 - Configuracion via variables de entorno (.env)

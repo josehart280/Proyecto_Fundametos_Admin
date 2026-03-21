@@ -4,12 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Simple Node.js web server with MySQL database connection for a university project.
+Simple Node.js web server with SQL Server database connection for a university project.
 
 ## Tech Stack
 
 - **Runtime**: Node.js 18+
-- **Database**: MySQL 8+ (via mysql2)
+- **Database**: SQL Server 2016+ (via mssql)
 - **Frontend**: Vanilla HTML, CSS, JavaScript
 
 ## Commands
@@ -32,9 +32,10 @@ npm start
 - Includes CORS headers for API requests
 
 **db.js** - Database module with:
-- Connection pool using mysql2/promise
+- Connection pool using mssql
 - Methods: query, insertar, actualizar, eliminar
 - Automatic connection testing
+- Uses parameterized queries for SQL Server
 
 **public/** - Static files:
 - `index.html` - Main page
@@ -52,7 +53,7 @@ npm start
 ## Configuration
 
 Environment variables in `.env`:
-- `DB_HOST` - MySQL server hostname
+- `DB_HOST` - SQL Server hostname
 - `DB_USER` - Database username
 - `DB_PASSWORD` - Database password
 - `DB_NAME` - Database name

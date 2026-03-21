@@ -1,10 +1,10 @@
 /**
- * Conexion a Base de Datos MySQL
- * Usa mysql2 con soporte para async/await
+ * Conexion a Base de Datos SQL Server
+ * Usa mssql con soporte para async/await
  */
 
 require('dotenv').config();
-const mysql = require('mysql2/promise');
+const sql = require('mssql');
 
 let pool = null;
 
@@ -14,18 +14,24 @@ let pool = null;
 async function crearPool() {
   if (pool) return pool;
 
-  pool = mysql.createPool({
-    host: process.env.DB_HOST,
+  const config = {
+    server: process.env.DB_HOST,
+    database: process.env.DB_NAME,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0,
-    enableKeepAlive: true,
-    keepAliveInitialDelay: 0
-  });
+    options: {
+      encrypt: true,
+      trustServerCertificate: true,
+      enableArithAbort: true
+    },
+    pool: {
+      max: 10,
+      min: 0,
+      idleTimeoutMillis: 30000
+    }
+  };
 
+  pool = await sql.connect(config);
   return pool;
 }
 
@@ -34,64 +40,108 @@ async function crearPool() {
  */
 async function probarConexion() {
   try {
-    const conexion = await crearPool();
-    await conexion.execute('SELECT 1');
-    console.log('✅ Conexion a MySQL exitosa');
+    const pool = await crearPool();
+    await pool.request().query('SELECT 1');
+    console.log('✅ Conexion a SQL Server exitosa');
     return true;
   } catch (error) {
-    console.error('❌ Error de conexion a MySQL:', error.message);
+    console.error('❌ Error de conexion a SQL Server:', error.message);
     return false;
   }
 }
 
 /**
  * Ejecuta una consulta SELECT
+ * @param {string} sqlQuery - Consulta SQL
+ * @param {Array} params - Parametros opcionales
+ * @returns {Promise<Array>} Resultados de la consulta
  */
-async function query(sql, params = []) {
-  const conexion = await crearPool();
-  const [filas] = await conexion.execute(sql, params);
-  return filas;
+async function query(sqlQuery, params = []) {
+  const pool = await crearPool();
+  const request = pool.request();
+
+  if (params && params.length > 0) {
+    params.forEach((param, index) => {
+      request.input(`param${index}`, param);
+    });
+  }
+
+  const result = await request.query(sqlQuery);
+  return result.recordset;
 }
 
 /**
  * Ejecuta una consulta INSERT
+ * @param {string} tabla - Nombre de la tabla
+ * @param {Object} datos - Objeto con los datos a insertar
+ * @returns {Promise<number>} ID del registro insertado
  */
 async function insertar(tabla, datos) {
-  const conexion = await crearPool();
+  const pool = await crearPool();
+  const request = pool.request();
+
   const campos = Object.keys(datos);
   const valores = Object.values(datos);
-  const placeholders = campos.map(() => '?').join(', ');
+  const setClause = campos.map((campo, i) => {
+    request.input(`campo${i}`, valores[i]);
+    return `${campo} = @campo${i}`;
+  }).join(', ');
 
-  const sql = `INSERT INTO ${tabla} (${campos.join(', ')}) VALUES (${placeholders})`;
+  const sqlQuery = `INSERT INTO ${tabla} SET ${setClause}; SELECT SCOPE_IDENTITY() as id;`;
 
-  const [resultado] = await conexion.execute(sql, valores);
-  return resultado.insertId;
+  const result = await request.query(sqlQuery);
+  return result.recordset[0].id;
 }
 
 /**
  * Ejecuta una consulta UPDATE
+ * @param {string} tabla - Nombre de la tabla
+ * @param {Object} datos - Objeto con los datos a actualizar
+ * @param {string} where - Condicion WHERE
+ * @param {Array} paramsWhere - Parametros de la condicion
+ * @returns {Promise<number>} Numero de filas afectadas
  */
 async function actualizar(tabla, datos, where, paramsWhere = []) {
-  const conexion = await crearPool();
-  const campos = Object.keys(datos);
-  const setClause = campos.map(campo => `${campo} = ?`).join(', ');
-  const valores = [...Object.values(datos), ...paramsWhere];
+  const pool = await crearPool();
+  const request = pool.request();
 
-  const sql = `UPDATE ${tabla} SET ${setClause} WHERE ${where}`;
+  let paramIndex = 0;
 
-  const [resultado] = await conexion.execute(sql, valores);
-  return resultado.affectedRows;
+  const campos = Object.keys(datos).map(campo => {
+    request.input(`campo${paramIndex}`, datos[campo]);
+    return `${campo} = @campo${paramIndex++}`;
+  }).join(', ');
+
+  const whereParams = paramsWhere.map(param => {
+    request.input(`where${paramIndex}`, param);
+    return `@where${paramIndex++}`;
+  });
+
+  const sqlQuery = `UPDATE ${tabla} SET ${campos} WHERE ${where}`;
+
+  const result = await request.query(sqlQuery);
+  return result.rowsAffected[0];
 }
 
 /**
  * Ejecuta una consulta DELETE
+ * @param {string} tabla - Nombre de la tabla
+ * @param {string} where - Condicion WHERE
+ * @param {Array} params - Parametros de la condicion
+ * @returns {Promise<number>} Numero de filas eliminadas
  */
 async function eliminar(tabla, where, params = []) {
-  const conexion = await crearPool();
-  const sql = `DELETE FROM ${tabla} WHERE ${where}`;
+  const pool = await crearPool();
+  const request = pool.request();
 
-  const [resultado] = await conexion.execute(sql, params);
-  return resultado.affectedRows;
+  params.forEach((param, index) => {
+    request.input(`param${index}`, param);
+  });
+
+  const sqlQuery = `DELETE FROM ${tabla} WHERE ${where}`;
+
+  const result = await request.query(sqlQuery);
+  return result.rowsAffected[0];
 }
 
 /**
@@ -99,9 +149,9 @@ async function eliminar(tabla, where, params = []) {
  */
 async function cerrarConexion() {
   if (pool) {
-    await pool.end();
+    await pool.close();
     pool = null;
-    console.log('🔌 Conexiones a MySQL cerradas');
+    console.log('🔌 Conexiones a SQL Server cerradas');
   }
 }
 
