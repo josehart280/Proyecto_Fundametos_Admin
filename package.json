@@ -1,0 +1,17 @@
+{
+  "name": "servidor-universidad",
+  "version": "1.0.0",
+  "description": "Servidor basico con conexion a MySQL para proyecto de universidad",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "mysql2": "^3.6.0",
+    "dotenv": "^16.3.0"
+  }
+}
