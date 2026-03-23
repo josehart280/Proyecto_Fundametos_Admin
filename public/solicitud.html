@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nueva Solicitud - Vacaciones</title>
+    <link rel="stylesheet" href="css/global.css">
+</head>
+<body>
+
+    <!-- Sidebar Navegación Solamente -->
+    <aside class="sidebar">
+        <div class="brand" style="display: flex; align-items: center; gap: 12px; margin-bottom: 40px; padding-left: 5px;">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="url(#logoGradient)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <defs>
+                    <linearGradient id="logoGradient" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                        <stop stop-color="#6366f1"/>
+                        <stop offset="1" stop-color="#2dd4bf"/>
+                    </linearGradient>
+                </defs>
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                <line x1="12" y1="22.08" x2="12" y2="12"></line>
+            </svg>
+            <span style="font-size: 1.5rem; font-weight: 800; color: #fff; font-family: 'Outfit', sans-serif;">Vacaciones</span>
+        </div>
+        <nav style="display: flex; flex-direction: column;">
+            <a href="dashboard.html" class="nav-item">Dashboard</a>
+            <a href="solicitud.html" class="nav-item active">Nueva Solicitud</a>
+            <a href="mis_solicitudes.html" class="nav-item">Mis Solicitudes</a>
+            <a href="#" class="nav-item">Ajustes</a>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+        <!-- Header con Usuario a la derecha -->
+        <header class="main-header animate">
+            <div>
+                <h1 style="font-size: 2.3rem; margin-bottom: 6px; font-weight: 800;">Solicitud de <span style="color: var(--secondary-accent);">Vacaciones</span></h1>
+                <p style="color: var(--text-muted); font-size: 1.05rem;">Completa el formulario para enviar tu solicitud a Jefatura.</p>
+            </div>
+            
+            <div class="user-profile">
+                <!-- Avatar SÍ SALE A LA DERECHA -->
+                <div style="text-align: right; padding-left: 8px;">
+                    <div style="font-weight: 700; color: #fff; font-size: 0.95rem;">Geral P.</div>
+                    <div style="font-size: 0.75rem; color: var(--secondary-accent); font-weight: 600;">Docente • Propiedad</div>
+                </div>
+                <div class="avatar">G</div>
+            </div>
+        </header>
+
+        <div class="panel-card animate" style="animation-delay: 0.2s;">
+            <form id="formSolicitud">
+                <div class="summary-box">
+                    <span style="color: rgba(255,255,255,0.8);">Saldo Disponible: <strong>15.0 días</strong></span>
+                    <span style="color: rgba(255,255,255,0.8);">Total a Solicitar: <strong id="total-dias" style="color: var(--secondary-accent);">0</strong> días</span>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="form-group">
+                        <label for="fecha_inicio">Fecha de Inicio</label>
+                        <input type="date" id="fecha_inicio" name="fecha_inicio" required>
+                        <div id="error-fecha-inicio" class="error-message">La fecha de inicio no puede ser anterior a la actual.</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="fecha_fin">Fecha de Fin</label>
+                        <input type="date" id="fecha_fin" name="fecha_fin" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="comentarios">Comentarios (Opcional)</label>
+                    <textarea id="comentarios" name="comentarios" rows="3" placeholder="Ej: Viaje familiar fuera del país..."></textarea>
+                </div>
+
+                <div id="error-global" class="error-message" style="margin-bottom: 24px;"></div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 16px; margin-top: 10px;">
+                    <button type="button" class="btn-outline" onclick="location.href='dashboard.html'">Cancelar</button>
+                    <button type="submit" class="btn-primary">Enviar Solicitud</button>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <!-- Modal de Éxito Corporativo -->
+    <div id="success-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-icon-success">✓</div>
+            <h3 class="modal-title">Gestión Completada</h3>
+            <p class="modal-text">Tu solicitud de vacaciones ha sido enviada exitosamente para revisión de jefatura.</p>
+            <button class="btn-primary" style="width: 100%;" onclick="location.href='dashboard.html'">Volver al Inicio</button>
+        </div>
+    </div>
+
+    <script src="js/solicitud.js"></script>
+</body>
+</html>

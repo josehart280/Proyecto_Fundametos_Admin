@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mis Solicitudes - Vacaciones</title>
+    <link rel="stylesheet" href="css/global.css">
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div class="brand">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                <line x1="12" y1="22.08" x2="12" y2="12"></line>
+            </svg>
+            <span>Vacaciones</span>
+        </div>
+
+        <nav style="display: flex; flex-direction: column;">
+            <a href="dashboard.html" class="nav-item">Dashboard</a>
+            <a href="solicitud.html" class="nav-item">Nueva Solicitud</a>
+            <a href="mis_solicitudes.html" class="nav-item active">Mis Solicitudes</a>
+            <a href="#" class="nav-item">Ajustes</a>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+
+        <header class="main-header animate">
+            <div>
+                <h1 style="font-size: 2.3rem; margin-bottom: 6px; font-weight: 800;">
+                    Mis <span style="color: var(--secondary-accent);">Solicitudes</span>
+                </h1>
+                <p style="color: var(--text-muted); font-size: 1.05rem;">
+                    Consulta el historial y el estado actual de tus solicitudes de vacaciones.
+                </p>
+            </div>
+
+            <div class="user-profile">
+                <div style="text-align: right;">
+                    <div id="user-name-display" style="font-weight: 700; color: #fff; font-size: 0.95rem;">Cargando...</div>
+                    <div id="user-role-display" style="font-size: 0.70rem; color: var(--secondary-accent); font-weight: 600;">...</div>
+                </div>
+                <div id="user-avatar" class="avatar">G</div>
+            </div>
+        </header>
+
+        <section class="dashboard-grid">
+            <div class="stat-card animate" style="animation-delay: 0.1s;">
+                <div class="stat-label">
+                    <div class="stat-icon" style="color: var(--secondary-accent); background: rgba(45, 212, 191, 0.15);">≡</div>
+                    TOTAL SOLICITUDES
+                </div>
+                <div id="total-solicitudes" class="stat-value">0</div>
+                <div style="color: var(--text-muted); font-size: 0.8rem;">
+                    Historial registrado
+                </div>
+            </div>
+
+            <div class="stat-card animate" style="animation-delay: 0.2s;">
+                <div class="stat-label">
+                    <div class="stat-icon" style="color: #fbbf24; background: rgba(251, 191, 36, 0.15);">◷</div>
+                    PENDIENTES
+                </div>
+                <div id="total-pendientes" class="stat-value">0</div>
+                <div style="color: #fbbf24; font-size: 0.8rem;">
+                    En revisión
+                </div>
+            </div>
+
+            <div class="stat-card animate" style="animation-delay: 0.3s;">
+                <div class="stat-label">
+                    <div class="stat-icon" style="color: #4ade80; background: rgba(74, 222, 128, 0.15);">✓</div>
+                    APROBADAS / ACTIVAS
+                </div>
+                <div id="total-aprobadas" class="stat-value">0</div>
+                <div style="color: #4ade80; font-size: 0.8rem;">
+                    Solicitudes válidas
+                </div>
+            </div>
+        </section>
+
+        <section class="bottom-section animate" style="display: block; animation-delay: 0.4s;">
+            <div class="panel-card" style="padding: 24px;">
+
+                <div class="panel-title" style="margin-bottom: 20px;">
+                    <span>Listado de Solicitudes</span>
+                    <button class="btn-primary" onclick="location.href='solicitud.html'">+ Nueva Solicitud</button>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1.2fr 0.8fr 0.8fr; gap: 14px; margin-bottom: 20px;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="buscarSolicitud">Buscar por motivo</label>
+                        <input type="text" id="buscarSolicitud" placeholder="Ej: Viaje familiar">
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="filtroEstado">Filtrar por estado</label>
+                        <select id="filtroEstado">
+                            <option value="todos">Todos</option>
+                            <option value="Pendiente">Pendiente</option>
+                            <option value="Aprobada">Aprobada</option>
+                            <option value="Aprobado">Aprobado</option>
+                            <option value="Cancelada">Cancelada</option>
+                            <option value="Rechazada">Rechazada</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 0; display: flex; align-items: end;">
+                        <button class="btn-outline" style="width: 100%;" onclick="limpiarFiltros()">Limpiar filtros</button>
+                    </div>
+                </div>
+
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.08);">
+                                <th style="text-align: left; padding: 14px 12px; color: var(--text-muted); font-size: 0.85rem;">ID</th>
+                                <th style="text-align: left; padding: 14px 12px; color: var(--text-muted); font-size: 0.85rem;">Fecha Inicio</th>
+                                <th style="text-align: left; padding: 14px 12px; color: var(--text-muted); font-size: 0.85rem;">Fecha Fin</th>
+                                <th style="text-align: left; padding: 14px 12px; color: var(--text-muted); font-size: 0.85rem;">Días</th>
+                                <th style="text-align: left; padding: 14px 12px; color: var(--text-muted); font-size: 0.85rem;">Motivo</th>
+                                <th style="text-align: left; padding: 14px 12px; color: var(--text-muted); font-size: 0.85rem;">Estado</th>
+                                <th style="text-align: center; padding: 14px 12px; color: var(--text-muted); font-size: 0.85rem;">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-solicitudes-body">
+                            <tr>
+                                <td colspan="7" style="padding: 30px; text-align: center; color: var(--text-muted);">
+                                    Cargando solicitudes...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <div id="detalle-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 520px;">
+            <div class="modal-icon" style="background: rgba(99,102,241,0.15); color: #818cf8;">i</div>
+            <h3 class="modal-title">Detalle de Solicitud</h3>
+
+            <div id="detalle-contenido" style="text-align: left; margin-top: 20px; color: #e5e7eb; line-height: 1.8;">
+            </div>
+
+            <div style="display: flex; justify-content: center; margin-top: 24px;">
+                <button class="btn-primary" onclick="cerrarDetalle()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="cancel-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-icon">⚠</div>
+            <h3 class="modal-title">Anular Solicitud</h3>
+            <p class="modal-text">
+                ¿Deseas anular esta solicitud? Los días serán devueltos a tu saldo disponible.
+            </p>
+            <div style="display: flex; justify-content: center; gap: 12px; margin-top: 30px;">
+                <button class="btn-outline" onclick="cerrarModal()">No, mantener</button>
+                <button class="btn-danger" onclick="confirmarCancelacion()">Sí, anular</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/mis-solicitudes.js"></script>
+</body>
+</html>
