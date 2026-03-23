@@ -1,6 +1,6 @@
-# Sistema de Vacaciones CUCR 🏖️
+# Sistema de Vacaciones CUC
 
-**Sistema de Gestión de Vacaciones para el Colegio Universitario de Cartago (CUCR)**
+**Sistema de Gestión de Vacaciones para el Colegio Universitario de Cartago (CUC)**
 
 [![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
 [![SQL Server](https://img.shields.io/badge/SQL%20Server-2016+-blue.svg)](https://www.microsoft.com/sql-server)
@@ -10,7 +10,7 @@ Proyecto estudiantil desarrollado para la asignatura de Fundamentos de Administr
 
 ---
 
-## 📊 Progreso del Proyecto
+##  Progreso del Proyecto
 
 ### Estado General: 🟡 En Desarrollo (40%)
 
@@ -51,11 +51,11 @@ Proyecto estudiantil desarrollado para la asignatura de Fundamentos de Administr
 
 ---
 
-## 📋 Descripción del Proyecto
+##  Descripción del Proyecto
 
 Sistema web para la gestión automatizada de solicitudes de vacaciones de colaboradores del CUCR. Permite a los empleados consultar su saldo disponible, realizar solicitudes de vacaciones, dar seguimiento a trámites, y a las jefaturas gestionar las aprobaciones.
 
-### ✨ Funcionalidades Implementadas
+###  Funcionalidades Implementadas
 
 #### Módulo Colaborador
 - 📊 **Dashboard** - Visualización de saldo disponible, días en proceso y días consumidos
@@ -64,7 +64,6 @@ Sistema web para la gestión automatizada de solicitudes de vacaciones de colabo
 - ❌ **Cancelación** - Posibilidad de cancelar solicitudes pendientes o aprobadas (antes de la fecha inicio)
 
 #### Características Técnicas
-- 🎨 **Diseño Premium** - Interfaz Glassmorphism moderna y responsive
 - 📅 **Calendario Interactivo** - Visualización de vacaciones programadas y feriados institucionales
 - 🔒 **Cálculo Inteligente** - Excluye fines de semana y feriados del cómputo de días
 - 📱 **Responsive** - Adaptable a dispositivos móviles y tablets
@@ -101,7 +100,7 @@ El servidor iniciará en `http://localhost:3001` (o el puerto configurado en .en
 
 ---
 
-## ⚙️ Configuración
+##  Configuración
 
 Crea un archivo `.env` en la raíz del proyecto con las siguientes variables:
 
@@ -117,7 +116,7 @@ PORT=3001
 JWT_SECRET=tu_clave_secreta_para_jwt
 ```
 
-> ⚠️ **IMPORTANTE**: El archivo `.env` contiene credenciales sensibles y está incluido en `.gitignore`. Nunca lo subas al repositorio.
+>  **IMPORTANTE**: El archivo `.env` contiene credenciales sensibles y está incluido en `.gitignore`. Nunca lo suban al repositorio.
 
 ---
 
@@ -152,7 +151,7 @@ Proyecto_Fundametos_Admin/
 
 ---
 
-## 🌐 Rutas de la Aplicación
+## Rutas de la Aplicación
 
 ### Frontend
 
@@ -200,7 +199,7 @@ Movimientos_Saldo (id_Movimiento, id_Personal, Tipo_Movimiento, Dias, Motivo, Fe
 
 ## 👥 Equipo de Desarrollo y Contribuciones
 
-### 💫 Contribuciones por Desarrollador
+###  Contribuciones por Desarrollador faltan todavia las pruebas documentadas
 
 | Desarrollador | Funcionalidades Entregadas | Estado |
 |---------------|---------------------------|--------|
@@ -283,17 +282,17 @@ Movimientos_Saldo (id_Movimiento, id_Personal, Tipo_Movimiento, Dias, Motivo, Fe
 
 ## 🔒 Notas de Seguridad
 
-> ⚠️ **IMPORTANTE**: Este sistema está en desarrollo y tiene los siguientes problemas de seguridad conocidos:
+>  **IMPORTANTE**: Este sistema está en desarrollo y tiene los siguientes problemas de seguridad conocidos:
 
-1. **SQL Injection**: Los endpoints POST concatenan strings SQL directamente. Debe corregirse antes de producción.
-2. **Autenticación**: Actualmente todas las operaciones usan `id_Personal = 1` hardcodeado.
-3. **Validaciones**: Algunas validaciones solo existen en el frontend.
+
+1. **Autenticación**: Actualmente todas las operaciones usan `id_Personal = 1` hardcodeado.
+2. **Validaciones**: Algunas validaciones solo existen en el frontend. ajajajajaj
 
 **Ver archivo `CLAUDE.md` para guía de corrección de estos problemas.**
 
 ---
 
-## 🐛 Guía de Contribución
+##  Guía de Contribución
 
 ```bash
 # Crear rama para nueva funcionalidad
