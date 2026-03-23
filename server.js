@@ -9,7 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const db = require('./db');
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 
 const mimeTypes = {
   '.html': 'text/html',
@@ -72,7 +72,7 @@ async function manejarAPI(req, res) {
     }
 
     if (url === '/api/usuarios' && method === 'GET') {
-      const usuarios = await db.query('SELECT * FROM usuarios LIMIT 100');
+      const usuarios = await db.query('SELECT TOP 100 * FROM usuarios');
       res.writeHead(200);
       res.end(JSON.stringify(usuarios));
       return;
