@@ -1,4 +1,4 @@
-# 🏖️ Sistema de Vacaciones CUC
+#  Sistema de Vacaciones CUC
 
 **Sistema de Gestión de Vacaciones para el Colegio Universitario de Cartago (CUC)**
 
