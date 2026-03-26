@@ -335,7 +335,7 @@ Para reportar bugs o solicitar funcionalidades, contactar al equipo de desarroll
 
 ## 👤 Autor Principal
 
-**José Alonso Porras Ramírez** - Auditoría y Documentación
+**José Alonso Porras Ramírez** 
 
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?logo=linkedin&logoColor=white)](https://linkedin.com/in/jose-porras-039202326)
 [![Portfolio](https://img.shields.io/badge/Portfolio-000000?logo=vercel&logoColor=white)](https://jose-porras-portfolio.vercel.app)
@@ -345,7 +345,7 @@ Para reportar bugs o solicitar funcionalidades, contactar al equipo de desarroll
 
 ---
 
-## 📜 Licencia
+## 
 
 Proyecto académico - Colegio Universitario de Cartago (CUCR)
 
