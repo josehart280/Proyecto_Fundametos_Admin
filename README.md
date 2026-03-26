@@ -1,16 +1,19 @@
-# Sistema de Vacaciones CUC
+# 🏖️ Sistema de Vacaciones CUC
 
 **Sistema de Gestión de Vacaciones para el Colegio Universitario de Cartago (CUC)**
 
 [![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
 [![SQL Server](https://img.shields.io/badge/SQL%20Server-2016+-blue.svg)](https://www.microsoft.com/sql-server)
 [![Estado](https://img.shields.io/badge/Estado-En%20Desarrollo-yellow.svg)]()
+[![Glassmorphism](https://img.shields.io/badge/Diseño-Glassmorphism-purple.svg)]()
 
-Proyecto estudiantil desarrollado para la asignatura de Fundamentos de Administración de Proyectos - Carrera de Administración de Sistemas Informáticos.
+Proyecto estudiantil desarrollado para la asignatura de **Fundamentos de Administración de Proyectos** - Carrera de Administración de Sistemas Informáticos.
+
+[📊 Progreso](#-progreso-del-proyecto) • [🚀 Instalación](#-instalación-rápida) • [📚 Documentación](#-documentación-adicional)
 
 ---
 
-##  Progreso del Proyecto
+## Progreso del Proyecto
 
 ### Estado General: 🟡 En Desarrollo (40%)
 
@@ -51,11 +54,11 @@ Proyecto estudiantil desarrollado para la asignatura de Fundamentos de Administr
 
 ---
 
-##  Descripción del Proyecto
+## Descripción del Proyecto
 
 Sistema web para la gestión automatizada de solicitudes de vacaciones de colaboradores del CUCR. Permite a los empleados consultar su saldo disponible, realizar solicitudes de vacaciones, dar seguimiento a trámites, y a las jefaturas gestionar las aprobaciones.
 
-###  Funcionalidades Implementadas
+### Funcionalidades Implementadas
 
 #### Módulo Colaborador
 - 📊 **Dashboard** - Visualización de saldo disponible, días en proceso y días consumidos
@@ -82,7 +85,7 @@ Sistema web para la gestión automatizada de solicitudes de vacaciones de colabo
 
 ```bash
 # Clonar el repositorio
-git clone <url-del-repo>
+git clone https://github.com/josehart280/Proyecto_Fundametos_Admin.git
 cd Proyecto_Fundametos_Admin
 
 # Instalar dependencias
@@ -100,7 +103,7 @@ El servidor iniciará en `http://localhost:3001` (o el puerto configurado en .en
 
 ---
 
-##  Configuración
+## Configuración
 
 Crea un archivo `.env` en la raíz del proyecto con las siguientes variables:
 
@@ -116,7 +119,7 @@ PORT=3001
 JWT_SECRET=tu_clave_secreta_para_jwt
 ```
 
->  **IMPORTANTE**: El archivo `.env` contiene credenciales sensibles y está incluido en `.gitignore`. Nunca lo suban al repositorio.
+> **IMPORTANTE**: El archivo `.env` contiene credenciales sensibles y está incluido en `.gitignore`. Nunca lo suban al repositorio.
 
 ---
 
@@ -199,7 +202,7 @@ Movimientos_Saldo (id_Movimiento, id_Personal, Tipo_Movimiento, Dias, Motivo, Fe
 
 ## 👥 Equipo de Desarrollo y Contribuciones
 
-###  Contribuciones por Desarrollador faltan todavia las pruebas documentadas
+### Contribuciones por Desarrollador (faltan pruebas documentadas)
 
 | Desarrollador | Funcionalidades Entregadas | Estado |
 |---------------|---------------------------|--------|
@@ -282,17 +285,16 @@ Movimientos_Saldo (id_Movimiento, id_Personal, Tipo_Movimiento, Dias, Motivo, Fe
 
 ## 🔒 Notas de Seguridad
 
->  **IMPORTANTE**: Este sistema está en desarrollo y tiene los siguientes problemas de seguridad conocidos:
-
+> **IMPORTANTE**: Este sistema está en desarrollo y tiene los siguientes problemas de seguridad conocidos:
 
 1. **Autenticación**: Actualmente todas las operaciones usan `id_Personal = 1` hardcodeado.
-2. **Validaciones**: Algunas validaciones solo existen en el frontend. ajajajajaj
+2. **Validaciones**: Algunas validaciones solo existen en el frontend.
 
 **Ver archivo `CLAUDE.md` para guía de corrección de estos problemas.**
 
 ---
 
-##  Guía de Contribución
+## Guía de Contribución
 
 ```bash
 # Crear rama para nueva funcionalidad
@@ -328,6 +330,18 @@ git push origin feature/nueva-funcionalidad
 ## 📞 Soporte
 
 Para reportar bugs o solicitar funcionalidades, contactar al equipo de desarrollo.
+
+---
+
+## 👤 Autor Principal
+
+**José Alonso Porras Ramírez** - Auditoría y Documentación
+
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?logo=linkedin&logoColor=white)](https://linkedin.com/in/jose-porras-039202326)
+[![Portfolio](https://img.shields.io/badge/Portfolio-000000?logo=vercel&logoColor=white)](https://jose-porras-portfolio.vercel.app)
+[![Email](https://img.shields.io/badge/Email-D14836?logo=gmail&logoColor=white)](mailto:josealonso.0186@gmail.com)
+
+📧 josealonso.0186@gmail.com
 
 ---
 
