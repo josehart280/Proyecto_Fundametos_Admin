@@ -15,21 +15,21 @@ Proyecto estudiantil desarrollado para la asignatura de **Fundamentos de Adminis
 
 ## Progreso del Proyecto
 
-### Estado General: 🟡 En Desarrollo (40%)
+### Estado General: 🟢 Funcional (65%)
 
 ```
-████████████████████░░░░░░░░░░░░░░░░░░░░  40%
+████████████████████████████░░░░░░░░░░░░  65%
 ```
 
 ### Progreso por Módulos
 
 | Módulo | Estado | Progreso | Responsable |
 |--------|--------|----------|-------------|
-| **🟢 Colaborador** | Funcional | `█████████████████████░░░` **90%** | Geral, Dencel, Karolayn |
-| **🟡 Autenticación** | Parcial | `█████░░░░░░░░░░░░░░░░░░░` **20%** | Josué, Geral |
+| **🟢 Colaborador** | Funcional | `██████████████████████░░` **90%** | Geral, Dencel, Karolayn |
+| **🟡 Autenticación** | Funcional | `██████████████████░░░░░░░` **60%** | Josué, Geral |
 | **🔴 Aprobación** | No iniciado | `░░░░░░░░░░░░░░░░░░░░░░░░` **0%** | Dencel, Karolayn |
 | **🔴 Administración** | No iniciado | `░░░░░░░░░░░░░░░░░░░░░░░░` **0%** | Sebastián |
-| **🟡 Auditoría** | Parcial | `██████░░░░░░░░░░░░░░░░░░` **30%** | Jose |
+| **🟡 Auditoría** | Parcial | `████████░░░░░░░░░░░░░░░░░` **40%** | Jose |
 
 ### Detalle de Funcionalidades
 
@@ -40,9 +40,11 @@ Proyecto estudiantil desarrollado para la asignatura de **Fundamentos de Adminis
 - [x] Cancelación de solicitudes
 - [x] APIs REST para gestión de vacaciones
 - [x] Diseño Glassmorphism
+- [x] Login y logout con tokens de sesión
+- [x] Recuperación de contraseña por email
+- [x] Auditoría de intentos de acceso
 
 #### 🚧 En Desarrollo
-- [ ] Autenticación JWT (Login/Logout)
 - [ ] Auditoría completa de acciones
 
 #### 🔴 Pendientes
@@ -246,7 +248,7 @@ Movimientos_Saldo (id_Movimiento, id_Personal, Tipo_Movimiento, Dias, Motivo, Fe
 | Requerimiento | ID | Estado | Badge |
 |---------------|-----|--------|-------|
 | Módulo Colaborador | PRF-COL-00 | ![Done](https://img.shields.io/badge/✅-Completado-brightgreen) | 90% |
-| Módulo Autenticación | PRF-AUT-00 | ![Partial](https://img.shields.io/badge/🟡-Parcial-yellow) | 20% |
+| Módulo Autenticación | PRF-AUT-00 | ![Done](https://img.shields.io/badge/🟡-Funcional-yellow) | 60% |
 | Módulo Aprobación | PRF-APR-00 | ![Pending](https://img.shields.io/badge/🔴-No%20Iniciado-red) | 0% |
 | Módulo Administración | PRF-ADM-00 | ![Pending](https://img.shields.io/badge/🔴-No%20Iniciado-red) | 0% |
 | Módulo Auditoría | PRF-AUD-00 | ![Partial](https://img.shields.io/badge/🟡-Parcial-yellow) | 30% |
