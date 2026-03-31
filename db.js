@@ -60,7 +60,11 @@ async function query(sqlQuery, params = []) {
   const pool = await crearPool();
   const request = pool.request();
 
-  if (params && params.length > 0) {
+  if (params && !Array.isArray(params)) {
+    for (const key in params) {
+      request.input(key, params[key]);
+    }
+  } else if (params && params.length > 0) {
     params.forEach((param, index) => {
       request.input(`param${index}`, param);
     });
@@ -112,10 +116,16 @@ async function actualizar(tabla, datos, where, paramsWhere = []) {
     return `${campo} = @campo${paramIndex++}`;
   }).join(', ');
 
-  const whereParams = paramsWhere.map(param => {
-    request.input(`where${paramIndex}`, param);
-    return `@where${paramIndex++}`;
-  });
+  if (paramsWhere && !Array.isArray(paramsWhere)) {
+    for (const key in paramsWhere) {
+      request.input(key, paramsWhere[key]);
+    }
+  } else if (paramsWhere && paramsWhere.length > 0) {
+    const whereParams = paramsWhere.map(param => {
+      request.input(`where${paramIndex}`, param);
+      return `@where${paramIndex++}`;
+    });
+  }
 
   const sqlQuery = `UPDATE ${tabla} SET ${campos} WHERE ${where}`;
 
@@ -134,9 +144,15 @@ async function eliminar(tabla, where, params = []) {
   const pool = await crearPool();
   const request = pool.request();
 
-  params.forEach((param, index) => {
-    request.input(`param${index}`, param);
-  });
+  if (params && !Array.isArray(params)) {
+    for (const key in params) {
+      request.input(key, params[key]);
+    }
+  } else if (params && params.length > 0) {
+    params.forEach((param, index) => {
+      request.input(`param${index}`, param);
+    });
+  }
 
   const sqlQuery = `DELETE FROM ${tabla} WHERE ${where}`;
 

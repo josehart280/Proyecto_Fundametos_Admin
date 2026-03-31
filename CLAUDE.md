@@ -19,30 +19,51 @@ Proyecto estudiantil de Administración de Proyectos - Implementación de sistem
 - **Frontend**: Vanilla HTML5, CSS3, JavaScript ES6+
 - **Architecture**: REST API con servidor HTTP nativo
 - **UI Design**: Glassmorphism (diseño premium con transparencias)
+- **Email**: Nodemailer (para recuperación de contraseña)
 
 ## Commands
 
 ```bash
-# Install dependencies
+# Install dependencies (incluye nodemailer)
 npm install
 
 # Start server
 npm start
 
-# Server runs on http://localhost:3000 (o 3001 en Dencel-Branch)
+# Server runs on http://localhost:3001
 ```
 
-## Estructura de Ramas
+## Estructura de Archivos
 
-| Rama | Estado | Descripción |
-|------|--------|-------------|
-| **main** | ⚠️ Base | Solo servidor básico con 2 APIs |
-| **Geral_Dashboard-Colaborador** | 🟡 Parcial | Dashboard + Solicitud (SIN "Mis Solicitudes") |
-| **Dencel-Branch** | 🟢 Más completa | Dashboard + Solicitud + Mis Solicitudes |
+```
+Proyecto_Fundametos_Admin/
+├── auth.js                  ← Módulo de autenticación (login, logout, tokens, bloqueo)
+├── mailer.js                ← Wrapper nodemailer para envío de emails
+├── server.js                ← Servidor HTTP + todas las APIs REST
+├── db.js                    ← Módulo de conexión SQL Server con pool
+├── package.json             ← Dependencias: mssql, dotenv, nodemailer
+├── .env                     ← Variables de entorno (credenciales BD + SMTP)
+├── .env.example             ← Template de variables (para compartir sin credenciales)
+├── SCRIPT_SQL_AUTENTICACION.sql  ← DDL para tablas de autenticación
+└── public/
+    ├── index.html           ← Landing page (redirige a login si no hay sesión)
+    ├── login.html           ← Pantalla de inicio de sesión
+    ├── recuperar-password.html ← Flujo de recuperación de contraseña (3 pasos)
+    ├── dashboard.html       ← Dashboard del colaborador
+    ├── solicitud.html       ← Formulario de solicitud de vacaciones
+    ├── mis_solicitudes.html ← Historial completo con filtros
+    ├── css/
+    │   ├── auth.css        ← Estilos de las páginas de autenticación
+    │   ├── global.css      ← Sistema de diseño Glassmorphism
+    │   └── styles.css      ← Estilos base
+    └── js/
+        ├── dashboard.js     ← Lógica del dashboard y calendario
+        ├── solicitud.js     ← Lógica del formulario
+        ├── mis_solicitudes.js ← Lógica de tabla y filtros
+        └── main.js         ← Lógica base
+```
 
-**Estrategia de merge**: Dencel-Branch es la rama más completa. Contiene todo lo de Geral + el módulo "Mis Solicitudes".
-
-## Architecture
+## Arquitectura
 
 ### Backend
 
@@ -51,28 +72,50 @@ npm start
 - Rutas API bajo `/api/*`
 - CORS configurado para requests cross-origin
 - **⚠️ CRÍTICO**: Tiene SQL Injection en endpoints POST (concatenación de strings SQL)
+- Incluye todas las rutas del módulo Colaborador + módulo de Autenticación
+
+**auth.js** - Módulo de autenticación:
+- `validarCredenciales(username, password)` — verifica credenciales contra BD
+- `crearSesion(id_Usuario)` — genera token de sesión (8 horas)
+- `cerrarSesion(token)` — invalida el token
+- `validarSesion(token)` — verifica si el token es activo
+- `generarTokenRecuperacion(id_Usuario)` — genera token de recuperación (15 min)
+- `cambiarPasswordConToken(token, nuevaPassword)` — cambia password con token
+- `registrarIntento(id_Usuario, resultado, razon, ip)` — auditoría de accesos
+- Bloqueo de cuenta tras 3 intentos fallidos (30 min de bloqueo)
 
 **db.js** - Módulo de base de datos:
 - Connection pool usando mssql
 - Métodos: query, insertar, actualizar, eliminar
 - Prueba automática de conexión
-- **Nota**: Las funciones de insertar/actualizar usan parameterized queries, pero server.js no las usa
+
+**mailer.js** - Wrapper de nodemailer:
+- `enviarRecuperacionPassword(correo, nombre, token, minutosValidez)`
+- `enviarConfirmacionCambioPassword(correo, nombre)`
 
 ### Frontend
 
 **public/** - Archivos estáticos:
-- `index.html` - Landing page
-- `dashboard.html` - Dashboard del colaborador (saldo, calendario, solicitudes recientes)
-- `solicitud.html` - Formulario de nueva solicitud de vacaciones
-- `mis_solicitudes.html` - Listado completo con filtros (solo en Dencel-Branch)
-- `css/global.css` - Sistema de diseño Glassmorphism
-- `js/dashboard.js` - Lógica del dashboard y calendario
-- `js/solicitud.js` - Lógica del formulario de solicitud
-- `js/mis_solicitudes.js` - Lógica de tabla y filtros (solo en Dencel-Branch)
+- `index.html` - Landing page con redirección automática a login
+- `login.html` - Formulario de login con glassmorphism
+- `recuperar-password.html` - Flujo de 3 pasos para recuperación
+- `dashboard.html` - Dashboard del colaborador
+- `solicitud.html` - Formulario de solicitud de vacaciones
+- `mis_solicitudes.html` - Listado completo con filtros
 
 ## API Routes
 
-### Core APIs
+### Autenticación (PRF-AUT-00) ✅
+
+| Method | Endpoint | Descripción |
+|--------|----------|-------------|
+| POST | `/api/login` | Login con username/password. Devuelve token de sesión (8h) |
+| POST | `/api/logout` | Cierra sesión, invalida el token |
+| POST | `/api/solicitar-recuperacion` | Genera token de recuperación y envía email |
+| POST | `/api/cambiar-password` | Cambia password usando token de recuperación |
+| GET | `/api/validar-sesion` | Verifica si el token de sesión es válido |
+
+### Colaborador (PRF-COL-00) ✅
 
 | Method | Endpoint | Descripción |
 |--------|----------|-------------|
@@ -82,20 +125,26 @@ npm start
 | POST | `/api/solicitudes` | Crear solicitud + bloquear saldo + registrar movimiento |
 | POST | `/api/cancelar` | Cancelar solicitud + reembolsar saldo + registrar movimiento |
 
+### Auditoría
+
+| Method | Endpoint | Descripción |
+|--------|----------|-------------|
+| GET | `/api/auditar/intentos-acceso` | Obtiene historial de intentos de acceso (requiere token) |
+
 ### Notas de Seguridad ⚠️
 
-1. **SQL Injection**: Las APIs POST concatenan strings SQL directamente. Ejemplo vulnerable:
-   ```javascript
-   await db.query(`INSERT INTO ... VALUES (1, '${data.fInicio}', ...)`);
-   ```
+1. **SQL Injection**: Las APIs POST concatenan strings SQL directamente.
    **Corrección**: Usar parameterized queries con `request.input()`
 
-2. **Usuario Hardcoded**: Todas las queries usan `id_Personal = 1` hardcodeado.
-   **Solución**: Implementar JWT o session-based auth
+2. **Contraseñas en texto plano**: Las contraseñas se comparan sin hash (sin bcrypt).
+   **⚠️ TODO**: Implementar bcrypt antes de producción. El archivo `auth.js` tiene un TODO marcado.
+
+3. **Transacciones SQL**: Las operaciones de 3 pasos no son atómicas.
+   **Corrección**: Usar `sql.Transaction()` con commit/rollback.
 
 ## Database Schema
 
-### Tablas Identificadas
+### Tablas Originales
 
 ```sql
 -- Personal/Empleados
@@ -113,24 +162,58 @@ Carreras (id_Carrera, Nombre)
 
 -- Solicitudes de vacaciones
 Solicitudes_Vacaciones (
-  id_Solicitud,
-  id_Personal,
-  fecha_Inicio,
-  fecha_Fin,
-  dias_Solicitados,
-  Motivo,
-  Estado  -- 'Pendiente', 'Aprobada', 'Cancelada', 'Rechazada'
+  id_Solicitud, id_Personal, fecha_Inicio, fecha_Fin,
+  dias_Solicitados, Motivo, Estado  -- 'Pendiente', 'Aprobada', 'Cancelada', 'Rechazada'
 )
 
 -- Feriados institucionales
 Feriados (fecha, descripcion)
 
 -- Kardex/Movimientos contables
-Movimientos_Saldo (
-  id_Personal,
-  Tipo_Movimiento,  -- 'Suma', 'Resta'
-  Dias,
-  Motivo
+Movimientos_Saldo (id_Personal, Tipo_Movimiento, Dias, Motivo, Fecha_Registro)
+```
+
+### Tablas de Autenticación (crear con SCRIPT_SQL_AUTENTICACION.sql)
+
+```sql
+-- Sesiones activas
+Sesiones (
+  id_Sesion INT PRIMARY KEY,
+  id_Usuario INT,
+  Token VARCHAR(500) UNIQUE,
+  Fecha_Creacion DATETIME,
+  Fecha_Expiracion DATETIME,
+  Activa BIT DEFAULT 1
+)
+
+-- Tokens de recuperación de password
+Recuperacion_Password (
+  id_Recuperacion INT PRIMARY KEY,
+  id_Usuario INT,
+  Token VARCHAR(500) UNIQUE,
+  Fecha_Creacion DATETIME,
+  Fecha_Expiracion DATETIME,
+  Utilizado BIT DEFAULT 0
+)
+
+-- Auditoría de intentos de acceso
+Intentos_Acceso (
+  id_Intento INT PRIMARY KEY,
+  id_Usuario INT,
+  Fecha_Intento DATETIME,
+  Resultado VARCHAR(20),  -- 'exitoso', 'fallido'
+  Razon_Fallo VARCHAR(500),
+  IP_Cliente VARCHAR(50)
+)
+
+-- Auditoría de intentos de recuperación
+Intentos_Recuperacion (
+  id_Intento INT PRIMARY KEY,
+  id_Usuario INT,
+  Correo VARCHAR(100),
+  Fecha_Intento DATETIME,
+  Token_Enviado VARCHAR(500),
+  Estado VARCHAR(20)  -- 'enviado', 'utilizado', 'expirado'
 )
 ```
 
@@ -138,44 +221,46 @@ Movimientos_Saldo (
 
 ### Nivel 0 (Obligatorios)
 
-| ID | Módulo | Descripción |
-|----|--------|-------------|
-| PRF-AUT-00 | Autenticación | Login, sesiones, recuperación de contraseña |
-| PRF-COL-00 | Colaborador | Dashboard, solicitudes, historial, cancelación |
-| PRF-APR-00 | Aprobación | Bandeja de entrada, aprobar/rechazar, calendario equipo |
-| PRF-ADM-00 | Administración | Gestión usuarios, ajuste saldos, configuración |
-| PRF-AUD-00 | Auditoría | Registro inmutable de acciones, reportes |
+| ID | Módulo | Estado |
+|----|--------|--------|
+| PRF-AUT-00 | Autenticación | ✅ Implementado |
+| PRF-COL-00 | Colaborador | ✅ Implementado |
+| PRF-APR-00 | Aprobación | ❌ No iniciado |
+| PRF-ADM-00 | Administración | ❌ No iniciado |
+| PRF-AUD-00 | Auditoría | 🟡 Parcial |
 
 ### Nivel 1 (Deseables) - Estado de Implementación
 
-| ID | Requerimiento | Rama | Estado |
-|----|--------------|------|--------|
-| PRF-AUT-01 | Pantalla Login | Ninguna | ❌ No implementado |
-| PRF-AUT-02 | Cierre Sesión | Ninguna | ❌ No implementado |
-| PRF-AUT-03 | Registro Acceso | Parcial | 🟡 Logging básico |
-| PRF-AUT-04 | Recuperación Contraseña | Ninguna | ❌ No implementado |
-| PRF-COL-01 | Mis Solicitudes | Dencel | ✅ Implementado |
-| PRF-COL-02 | Solicitud Vacaciones | Dencel/Geral | ✅ Implementado |
-| PRF-COL-03 | Dashboard Empleado | Dencel/Geral | ✅ Implementado |
-| PRF-COL-04 | Cancelación Solicitud | Dencel | ✅ Implementado |
-| PRF-JEF-01 | Métricas Equipo | Ninguna | ❌ No implementado |
-| PRF-JEF-02 | Calendario | Dencel | 🟡 Parcial (solo visualización) |
-| PRF-JEF-03 | Bandeja Entrada | Ninguna | ❌ No implementado |
-| PRF-JEF-04 | Bandeja Historial | Ninguna | ❌ No implementado |
-| PRF-ADM-01 | Gestión Usuarios | Ninguna | ❌ No implementado |
-| PRF-ADM-02 | Configuraciones | Ninguna | ❌ No implementado |
-| PRF-ADM-03 | Reportes | Ninguna | ❌ No implementado |
-| PRF-AUD-02 | Registro Acciones | Parcial | 🟡 Solo movimientos saldo |
-| PRF-AUD-03 | Registro Solicitudes | Parcial | 🟡 Solo creación |
+| ID | Requerimiento | Estado |
+|----|--------------|--------|
+| PRF-AUT-01 | Pantalla Login | ✅ Implementado |
+| PRF-AUT-02 | Cierre Sesión | ✅ Implementado |
+| PRF-AUT-03 | Registro Acceso | ✅ Implementado (completo con auditoría) |
+| PRF-AUT-04 | Recuperación Contraseña | ✅ Implementado |
+| PRF-COL-01 | Mis Solicitudes | ✅ Implementado |
+| PRF-COL-02 | Solicitud Vacaciones | ✅ Implementado |
+| PRF-COL-03 | Dashboard Empleado | ✅ Implementado |
+| PRF-COL-04 | Cancelación Solicitud | ✅ Implementado |
+| PRF-JEF-01 | Métricas Equipo | ❌ No implementado |
+| PRF-JEF-02 | Calendario | 🟡 Parcial (solo visualización) |
+| PRF-JEF-03 | Bandeja Entrada | ❌ No implementado |
+| PRF-JEF-04 | Bandeja Historial | ❌ No implementado |
+| PRF-ADM-01 | Gestión Usuarios | ❌ No implementado |
+| PRF-ADM-02 | Configuraciones | ❌ No implementado |
+| PRF-ADM-03 | Reportes | ❌ No implementado |
+| PRF-AUD-02 | Registro Acciones | 🟡 Solo movimientos saldo |
+| PRF-AUD-03 | Registro Solicitudes | 🟡 Solo creación |
 
 ## Flujo de Datos
 
 ```
-Colaborador → Solicitud → Aprobación (Jefatura)
-     ↓              ↓
-Auditoría ← Registro de acciones
-     ↓
-Administración (RRHH) - Reportes, ajustes
+Login → Sesión Token → Acceder a Dashboard/Solicitudes
+                                 ↓
+                         Solicitud → Aprobación (Jefatura)
+                                 ↓
+                          Auditoría ← Registro de acciones
+                                 ↓
+                    Administración (RRHH) - Reportes, ajustes
 ```
 
 ## Problemas Críticos Pendientes
@@ -183,7 +268,7 @@ Administración (RRHH) - Reportes, ajustes
 ### Seguridad (Bloqueantes para producción)
 
 1. **SQL Injection** - Todas las APIs POST son vulnerables
-2. **Autenticación** - No existe, ID=1 hardcodeado
+2. **Contraseñas sin hash** - Sin bcrypt. Las passwords están en texto plano.
 3. **Validación Server-Side** - Solo hay validaciones en frontend
 4. **Transacciones SQL** - Operaciones de 3 pasos no son atómicas
 
@@ -191,8 +276,33 @@ Administración (RRHH) - Reportes, ajustes
 
 1. **Módulo de Aprobación** - Jefaturas no tienen interfaz
 2. **Módulo de Administración** - RRHH no tiene interfaz
-3. **Autenticación real** - Login/logout con credenciales
-4. **Notificaciones** - Email cuando cambia estado
+3. **Notificaciones** - Email cuando cambia estado de solicitud
+
+## Configuración
+
+### Archivo .env (copiar de .env.example)
+
+```env
+# Base de datos
+DB_HOST=localhost
+DB_USER=sa
+DB_PASSWORD=your_password
+DB_NAME=VacacionesCUCR
+PORT=3001
+
+# Configuración SMTP (para recuperación de contraseña)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=tu_email@gmail.com
+SMTP_PASS=tu_app_password
+SMTP_FROM=Sistema Vacaciones CUCR <noreply@cucr.ac.cr>
+```
+
+### Setup Inicial de BD
+
+1. Ejecutar `SCRIPT_SQL_AUTENTICACION.sql` en SQL Server Management Studio
+2. Copiar `.env.example` a `.env` y completar credenciales
+3. Crear un usuario de prueba (el script SQL crea `ProyectoAdmin` / `Proyectos0123`)
 
 ## Buenas Prácticas Implementadas
 
@@ -201,47 +311,11 @@ Administración (RRHH) - Reportes, ajustes
 3. **Movimientos contables** - Registro de sumas/restas en auditoría
 4. **Multipuesto** - Soporte para múltiples nombramientos
 5. **UX** - Animaciones, toast notifications, modales
-
-## Git Workflow
-
-```bash
-# Ver estado de ramas
-git branch -a
-git log --oneline --all --graph
-
-# Merge estrategia recomendada:
-# 1. Dencel-Branch tiene todo lo de Geral + Mis Solicitudes
-# 2. Merge Dencel-Branch a main para tener el sistema más completo
-git checkout main
-git merge origin/Dencel-Branch
-
-# Commit sin verificación (skip hooks)
-git commit --no-verify -m "feat: description"
-git push origin main
-```
-
-## Documentación de Requerimientos
-
-Ubicación: `D:\ProyectoAdmin\requerimientos\`
-
-- `Nivel 0/` - Requerimientos obligatorios (5 módulos)
-- `Nivel 1/` - Requerimientos deseables (17 funcionalidades)
-- `Cronograma_Sistema_Vacaciones.xlsx` - Planificación de entregas
-
-## Configuration
-
-Variables de entorno en `.env`:
-```
-DB_HOST=localhost
-DB_USER=sa
-DB_PASSWORD=your_password
-DB_NAME=VacacionesCUCR
-PORT=3000
-```
-
-**Nota**: El archivo `.env` contiene credenciales y está en `.gitignore`.
+6. **Sesiones con timeout** - Tokens expiran en 8 horas
+7. **Bloqueo de cuenta** - 3 intentos fallidos = 30 min de bloqueo
+8. **Auditoría completa** - Todos los intentos de acceso registrados
 
 ---
 
-**Última actualización**: 2026-03-23
-**Análisis de ramas completado**: Se identificó que Dencel-Branch es la rama más completa y debe ser la base para producción.
+**Última actualización**: 2026-03-29
+**Integración completada**: Módulo de autenticación de Josué integrado al main. PRF-AUT-01, PRF-AUT-02, PRF-AUT-04 implementados.

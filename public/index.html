@@ -50,5 +50,13 @@
   </footer>
 
   <script src="js/main.js"></script>
+  <script>
+    (function() {
+      const token = localStorage.getItem('sessionToken');
+      if (!token) {
+        window.location.href = 'login.html';
+      }
+    })();
+  </script>
 </body>
 </html>
