@@ -18,18 +18,18 @@ Proyecto estudiantil desarrollado para la asignatura de **Fundamentos de Adminis
 ### Estado General: 🟢 Funcional (65%)
 
 ```
-████████████████████████████░░░░░░░░░░░░  65%
+████████████████████████████░░░░░░░░░░░░░░░░░░░  65%
 ```
 
 ### Progreso por Módulos
 
 | Módulo | Estado | Progreso | Responsable |
 |--------|--------|----------|-------------|
-| **🟢 Colaborador** | Funcional | `██████████████████████░░` **90%** | Geral, Dencel, Karolayn |
-| **🟡 Autenticación** | Funcional | `██████████████████░░░░░░░` **60%** | Josué, Geral |
-| **🔴 Aprobación** | No iniciado | `░░░░░░░░░░░░░░░░░░░░░░░░` **0%** | Dencel, Karolayn |
-| **🔴 Administración** | No iniciado | `░░░░░░░░░░░░░░░░░░░░░░░░` **0%** | Sebastián |
-| **🟡 Auditoría** | Parcial | `████████░░░░░░░░░░░░░░░░░` **40%** | Jose |
+| **🟢 Colaborador** | Funcional | `████████████████████████░░░░░` **95%** | Geral, Dencel, Karolayn |
+| **🟢 Autenticación** | Funcional | `█████████████████████████░░░░░` **85%** | Josué, Geral |
+| **🔴 Aprobación** | No iniciado | `░░░░░░░░░░░░░░░░░░░░░░░░░░░` **0%** | Dencel, Karolayn |
+| **🔴 Administración** | No iniciado | `░░░░░░░░░░░░░░░░░░░░░░░░░░░` **0%** | Sebastián |
+| **🟡 Auditoría** | Parcial | `████████░░░░░░░░░░░░░░░░░░░` **40%** | Jose |
 
 ### Detalle de Funcionalidades
 
