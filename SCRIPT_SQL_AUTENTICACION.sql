@@ -37,9 +37,7 @@ ELSE
 
 PRINT '✅ Columnas de autenticación agregadas a Usuarios'
 
--- ================================================================================
 -- PASO 2: CREAR TABLAS DE AUTENTICACIÓN (HU1-4)
--- ================================================================================
 
 -- 1. TABLA: Intentos_Acceso (HU3: Registro de Acceso)
 -- Auditoría de todos los intentos de login (exitosos y fallidos)

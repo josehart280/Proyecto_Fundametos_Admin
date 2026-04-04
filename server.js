@@ -152,6 +152,203 @@ async function manejarAPI(req, res) {
       return;
     }
 
+        // ===== MÓDULO JEFATURA / APROBACIÓN =====
+
+    // GET: Bandeja de solicitudes pendientes
+    if (url === '/api/jefatura/pendientes' && method === 'GET') {
+      const solicitudesPendientes = await db.query(`
+        SELECT
+          sv.id_Solicitud as id,
+          CONVERT(varchar, sv.fecha_Inicio, 23) as inicio,
+          CONVERT(varchar, sv.fecha_Fin, 23) as fin,
+          sv.dias_Solicitados as dias,
+          sv.Motivo as motivo,
+          sv.Estado as estado,
+          (ISNULL(p.Nombre, '') + ' ' + ISNULL(p.Apellido, '')) as colaborador
+        FROM Solicitudes_Vacaciones sv
+        INNER JOIN Personal p ON sv.id_Personal = p.id_Personal
+        WHERE sv.Estado = 'Pendiente'
+        ORDER BY sv.id_Solicitud DESC
+      `);
+
+      res.writeHead(200);
+      res.end(JSON.stringify({
+        success: true,
+        solicitudes: solicitudesPendientes
+      }));
+      return;
+    }
+
+    // GET: Historial de solicitudes procesadas
+    if (url === '/api/jefatura/historial' && method === 'GET') {
+      const historial = await db.query(`
+        SELECT
+          sv.id_Solicitud as id,
+          CONVERT(varchar, sv.fecha_Inicio, 23) as inicio,
+          CONVERT(varchar, sv.fecha_Fin, 23) as fin,
+          sv.dias_Solicitados as dias,
+          sv.Motivo as motivo,
+          sv.Estado as estado,
+          (ISNULL(p.Nombre, '') + ' ' + ISNULL(p.Apellido, '')) as colaborador
+        FROM Solicitudes_Vacaciones sv
+        INNER JOIN Personal p ON sv.id_Personal = p.id_Personal
+        WHERE sv.Estado IN ('Aprobada', 'Rechazada')
+        ORDER BY sv.id_Solicitud DESC
+      `);
+
+      res.writeHead(200);
+      res.end(JSON.stringify({
+        success: true,
+        solicitudes: historial
+      }));
+      return;
+    }
+
+    // POST: Aprobar solicitud
+    if (url === '/api/jefatura/aprobar' && method === 'POST') {
+      const data = await getBody();
+
+      if (!data.id) {
+        res.writeHead(400);
+        res.end(JSON.stringify({
+          success: false,
+          mensaje: 'El id de la solicitud es requerido.'
+        }));
+        return;
+      }
+
+      const solicitud = await db.query(`
+        SELECT id_Solicitud, Estado
+        FROM Solicitudes_Vacaciones
+        WHERE id_Solicitud = ${Number(data.id)}
+      `);
+
+      if (!solicitud || solicitud.length === 0) {
+        res.writeHead(404);
+        res.end(JSON.stringify({
+          success: false,
+          mensaje: 'La solicitud no existe.'
+        }));
+        return;
+      }
+
+      if (solicitud[0].Estado !== 'Pendiente') {
+        res.writeHead(409);
+        res.end(JSON.stringify({
+          success: false,
+          mensaje: 'La solicitud ya fue procesada o no está pendiente.'
+        }));
+        return;
+      }
+
+      await db.query(`
+        UPDATE Solicitudes_Vacaciones
+        SET Estado = 'Aprobada'
+        WHERE id_Solicitud = ${Number(data.id)}
+      `);
+
+      res.writeHead(200);
+      res.end(JSON.stringify({
+        success: true,
+        mensaje: 'Solicitud aprobada correctamente.'
+      }));
+      return;
+    }
+
+    // POST: Rechazar solicitud
+    if (url === '/api/jefatura/rechazar' && method === 'POST') {
+      const data = await getBody();
+
+      if (!data.id) {
+        res.writeHead(400);
+        res.end(JSON.stringify({
+          success: false,
+          mensaje: 'El id de la solicitud es requerido.'
+        }));
+        return;
+      }
+
+      const solicitud = await db.query(`
+        SELECT id_Solicitud, Estado, dias_Solicitados, id_Personal
+        FROM Solicitudes_Vacaciones
+        WHERE id_Solicitud = ${Number(data.id)}
+      `);
+
+      if (!solicitud || solicitud.length === 0) {
+        res.writeHead(404);
+        res.end(JSON.stringify({
+          success: false,
+          mensaje: 'La solicitud no existe.'
+        }));
+        return;
+      }
+
+      if (solicitud[0].Estado !== 'Pendiente') {
+        res.writeHead(409);
+        res.end(JSON.stringify({
+          success: false,
+          mensaje: 'La solicitud ya fue procesada o no está pendiente.'
+        }));
+        return;
+      }
+
+      const diasADevolver = Number(solicitud[0].dias_Solicitados || 0);
+      const idPersonal = Number(solicitud[0].id_Personal);
+
+      // Devolver el saldo porque la solicitud fue rechazada
+      await db.query(`
+        UPDATE Saldos_Vacacionales
+        SET saldo_Disponible = saldo_Disponible + ${diasADevolver}
+        WHERE id_Personal = ${idPersonal}
+      `);
+
+      // Registrar el movimiento de devolución
+      await db.query(`
+        INSERT INTO Movimientos_Saldo (id_Personal, Tipo_Movimiento, Dias, Motivo)
+        VALUES (${idPersonal}, 'Suma', ${diasADevolver}, 'Reembolso por rechazo de solicitud de vacaciones')
+      `);
+
+      // Cambiar el estado de la solicitud
+      await db.query(`
+        UPDATE Solicitudes_Vacaciones
+        SET Estado = 'Rechazada'
+        WHERE id_Solicitud = ${Number(data.id)}
+      `);
+
+      res.writeHead(200);
+      res.end(JSON.stringify({
+        success: true,
+        mensaje: 'Solicitud rechazada correctamente.'
+      }));
+      return;
+    }
+
+
+    if (url === '/api/validar-sesion' && method === 'GET') {
+      const token = req.headers['authorization']?.replace('Bearer ', '');
+
+      if (!token) {
+        res.writeHead(401);
+        res.end(JSON.stringify({
+          valida: false,
+          mensaje: 'Token requerido'
+        }));
+        return;
+      }
+
+      const resultado = await auth.validarSesion(token);
+
+      if (!resultado.valida) {
+        res.writeHead(401);
+        res.end(JSON.stringify(resultado));
+        return;
+      }
+
+      res.writeHead(200);
+      res.end(JSON.stringify(resultado));
+      return;
+    }
+
     // ===== MÓDULO DE AUTENTICACIÓN =====
 
     // HU 1: POST /api/login - Validar credenciales y crear sesión

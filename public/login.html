@@ -133,15 +133,17 @@
                 const data = await response.json();
 
                 if (data.exito) {
-                    mostrarMensaje(data.mensaje, 'exito');
-                    
-                    // Guardar token en localStorage
                     localStorage.setItem('sesion_token', data.token);
                     localStorage.setItem('usuario_info', JSON.stringify(data.usuario));
-                    
-                    // Redirigir al dashboard después de 1.5 segundos
+
+                    const rol = (data.usuario?.rol || '').toLowerCase();
+
                     setTimeout(() => {
+                        if (rol.includes('jefatura')) {
+                        window.location.href = '/jefatura_aprobacion.html';
+                        } else {
                         window.location.href = '/dashboard.html';
+                        }
                     }, 1500);
                 } else {
                     mostrarMensaje(data.mensaje || 'Error al iniciar sesión.', 'error');
