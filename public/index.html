@@ -14,6 +14,56 @@
       <a href="dashboard.html">📊 Dashboard</a>
       <a href="solicitud.html">📝 Solicitar Vacaciones</a>
       <a href="mis_solicitudes.html">📋 Mis Solicitudes</a>
+      <a href="jefatura_aprobacion.html">Jefatura / Aprobación</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <h2>Sistema de Gestión de Vacaciones</h2>
+      <p>Bienvenido al sistema de vacaciones del Colegio Universitario de Cartago</p>
+      <p>Selecciona una opción para continuar:</p>
+
+      <div class="modulos">
+        <a href="dashboard.html" class="modulo-card">
+          <h3>📊 Dashboard</h3>
+          <p>Consulta tu saldo disponible, días en proceso y calendario de vacaciones</p>
+        </a>
+
+        <a href="solicitud.html" class="modulo-card">
+          <h3>📝 Solicitar Vacaciones</h3>
+          <p>Realiza una nueva solicitud de vacaciones con calendario interactivo</p>
+        </a>
+
+        <a href="mis_solicitudes.html" class="modulo-card">
+          <h3>📋 Mis Solicitudes</h3>
+          <p>Revisa el historial de tus solicitudes, filtra por estado y cancela si es necesario</p>
+        </a>
+
+      </div>
+
+      <button id="btnSaludo">Saludar</button>
+      <p id="respuesta"></p>
+    </section>
+  </main>
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi Proyecto - Universidad</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header>
+    <h1>🏖️ Sistema de Vacaciones CUCR</h1>
+    <nav>
+      <a href="/">Inicio</a>
+      <a href="dashboard.html">📊 Dashboard</a>
+      <a href="solicitud.html">📝 Solicitar Vacaciones</a>
+      <a href="mis_solicitudes.html">📋 Mis Solicitudes</a>
+      <a href="jefatura_aprobacion.html">Jefatura / Aprobación</a>
     </nav>
   </header>
 
@@ -50,11 +100,22 @@
   </footer>
 
   <script src="js/main.js"></script>
+
   <script>
-    (function() {
-      const token = localStorage.getItem('sessionToken');
+    (async function() {
+      const token = localStorage.getItem('sesion_token');
+      const usuario = JSON.parse(localStorage.getItem('usuario_info') || '{}');
+
       if (!token) {
-        window.location.href = 'login.html';
+        window.location.href = '/login.html';
+        return;
+      }
+
+      const rol = (usuario.rol || '').toLowerCase();
+
+      if (rol.includes('jefatura')) {
+        window.location.href = '/jefatura_aprobacion.html';
+        return;
       }
     })();
   </script>

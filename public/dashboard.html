@@ -19,7 +19,7 @@
             <span>Vacaciones</span>
         </div>
         <nav style="display: flex; flex-direction: column;">
-            <a href="#" class="nav-item active">Dashboard</a>
+            <a href="dashboard.html" class="nav-item active">Dashboard</a>
             <a href="solicitud.html" class="nav-item">Nueva Solicitud</a>
             <a href="mis_solicitudes.html" class="nav-item">Mis Solicitudes</a>
             <a href="#" class="nav-item">Ajustes</a>
@@ -130,6 +130,25 @@
         </div>
     </div>
 
-    <script src="js/dashboard.js"></script>
+       <script src="js/dashboard.js"></script>
+
+    <script>
+        (async function() {
+            const token = localStorage.getItem('sesion_token');
+            const usuario = JSON.parse(localStorage.getItem('usuario_info') || '{}');
+
+            if (!token) {
+                window.location.href = '/login.html';
+                return;
+            }
+
+            const rol = (usuario.rol || '').toLowerCase();
+
+            if (rol.includes('jefatura')) {
+                window.location.href = '/jefatura_aprobacion.html';
+                return;
+            }
+        })();
+    </script>
 </body>
 </html>

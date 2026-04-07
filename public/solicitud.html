@@ -96,5 +96,23 @@
     </div>
 
     <script src="js/solicitud.js"></script>
+    <script>
+        (async function() {
+            const token = localStorage.getItem('sesion_token');
+            const usuario = JSON.parse(localStorage.getItem('usuario_info') || '{}');
+
+            if (!token) {
+                window.location.href = '/login.html';
+                return;
+            }
+
+            const rol = (usuario.rol || '').toLowerCase();
+
+            if (rol.includes('jefatura')) {
+                window.location.href = '/jefatura_aprobacion.html';
+                return;
+            }
+        })();
+    </script>
 </body>
 </html>
