@@ -152,7 +152,7 @@ async function manejarAPI(req, res) {
       return;
     }
 
-    // ===== Helper: Validar token para rutas de jefatura =====
+    // ===== Helper: Validar token + rol para rutas de jefatura =====
     async function validarTokenJefatura(req, res) {
       const token = req.headers['authorization']?.replace('Bearer ', '');
       if (!token) {
@@ -166,6 +166,27 @@ async function manejarAPI(req, res) {
         res.end(JSON.stringify({ success: false, mensaje: 'Sesión inválida o expirada' }));
         return false;
       }
+
+      // Validar que el usuario tenga rol de Jefatura (server-side)
+      const roles = await db.query(
+        `SELECT r.Nombre as Rol
+         FROM Usuarios u
+         JOIN Nombramientos n ON u.id_Personal = n.id_Personal
+         JOIN Roles r ON n.id_Rol = r.id_Rol
+         WHERE u.id_Usuario = @id_usuario`,
+        { id_usuario: sesion.usuario.id_Usuario }
+      );
+
+      const esJefatura = roles && roles.some(r => 
+        r.Rol.toLowerCase().includes('jefatura')
+      );
+
+      if (!esJefatura) {
+        res.writeHead(403);
+        res.end(JSON.stringify({ success: false, mensaje: 'No tiene permisos de jefatura' }));
+        return false;
+      }
+
       return true;
     }
 

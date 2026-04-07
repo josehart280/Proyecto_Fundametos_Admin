@@ -14,3 +14,13 @@ Thumbs.db
 # Archivos temporales
 *.tmp
 *.swp
+
+# Scripts de test
+scripts/test-*.js
+scripts/test-*.txt
+
+# Archivos temporales de debugging
+db-state.txt
+git-branches-temp.txt
+git-log-temp.txt
+test-api-funcional-output.txt

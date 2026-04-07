@@ -38,7 +38,10 @@ async function cargarModuloJefatura() {
 }
 
 async function cargarPendientes() {
-  const res = await fetch('/api/jefatura/pendientes');
+  const token = localStorage.getItem('sesion_token');
+  const res = await fetch('/api/jefatura/pendientes', {
+    headers: { 'Authorization': 'Bearer ' + token }
+  });
   const data = await res.json();
 
   if (!res.ok) {
@@ -50,7 +53,10 @@ async function cargarPendientes() {
 }
 
 async function cargarHistorial() {
-  const res = await fetch('/api/jefatura/historial');
+  const token = localStorage.getItem('sesion_token');
+  const res = await fetch('/api/jefatura/historial', {
+    headers: { 'Authorization': 'Bearer ' + token }
+  });
   const data = await res.json();
 
   if (!res.ok) {
@@ -282,9 +288,13 @@ async function confirmarDecision() {
     : '/api/jefatura/rechazar';
 
   try {
+    const token = localStorage.getItem('sesion_token');
     const res = await fetch(endpoint, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
       body: JSON.stringify({
         id: solicitudSeleccionada.id,
         observacion
