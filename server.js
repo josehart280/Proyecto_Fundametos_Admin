@@ -152,10 +152,28 @@ async function manejarAPI(req, res) {
       return;
     }
 
+    // ===== Helper: Validar token para rutas de jefatura =====
+    async function validarTokenJefatura(req, res) {
+      const token = req.headers['authorization']?.replace('Bearer ', '');
+      if (!token) {
+        res.writeHead(401);
+        res.end(JSON.stringify({ success: false, mensaje: 'Token requerido' }));
+        return false;
+      }
+      const sesion = await auth.validarSesion(token);
+      if (!sesion.valida) {
+        res.writeHead(401);
+        res.end(JSON.stringify({ success: false, mensaje: 'Sesión inválida o expirada' }));
+        return false;
+      }
+      return true;
+    }
+
         // ===== MÓDULO JEFATURA / APROBACIÓN =====
 
     // GET: Bandeja de solicitudes pendientes
     if (url === '/api/jefatura/pendientes' && method === 'GET') {
+      if (!(await validarTokenJefatura(req, res))) return;
       const solicitudesPendientes = await db.query(`
         SELECT
           sv.id_Solicitud as id,
@@ -181,6 +199,7 @@ async function manejarAPI(req, res) {
 
     // GET: Historial de solicitudes procesadas
     if (url === '/api/jefatura/historial' && method === 'GET') {
+      if (!(await validarTokenJefatura(req, res))) return;
       const historial = await db.query(`
         SELECT
           sv.id_Solicitud as id,
@@ -206,6 +225,7 @@ async function manejarAPI(req, res) {
 
     // POST: Aprobar solicitud
     if (url === '/api/jefatura/aprobar' && method === 'POST') {
+      if (!(await validarTokenJefatura(req, res))) return;
       const data = await getBody();
 
       if (!data.id) {
@@ -257,6 +277,7 @@ async function manejarAPI(req, res) {
 
     // POST: Rechazar solicitud
     if (url === '/api/jefatura/rechazar' && method === 'POST') {
+      if (!(await validarTokenJefatura(req, res))) return;
       const data = await getBody();
 
       if (!data.id) {
