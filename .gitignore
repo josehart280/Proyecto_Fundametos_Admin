@@ -10,17 +10,19 @@ Thumbs.db
 
 # Logs
 *.log
-
-# Archivos temporales
-*.tmp
-*.swp
-
-# Scripts de test
-scripts/test-*.js
-scripts/test-*.txt
+server.log
+test-output.log
 
 # Archivos temporales de debugging
 db-state.txt
 git-branches-temp.txt
 git-log-temp.txt
 test-api-funcional-output.txt
+
+# Archivos de documentación del agente
+CLAUDE.md
+
+# Scripts de test y utilities
+scripts/test-*.js
+scripts/test-*.sh
+scripts/merge-analyzer.sh
