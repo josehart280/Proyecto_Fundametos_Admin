@@ -1,70 +1,137 @@
 let pendientesOriginales = [];
 let historialOriginal = [];
+let calendarioOriginal = [];
+let conflictosOriginales = [];
 let solicitudSeleccionada = null;
 let accionSeleccionada = null;
 
 document.addEventListener('DOMContentLoaded', () => {
   cargarModuloJefatura();
 
-  document.getElementById('buscarPendiente').addEventListener('input', aplicarFiltrosPendientes);
-  document.getElementById('filtroPendienteEstado').addEventListener('change', aplicarFiltrosPendientes);
+  const buscarPendiente = document.getElementById('buscarPendiente');
+  const filtroPendienteEstado = document.getElementById('filtroPendienteEstado');
+  const buscarHistorial = document.getElementById('buscarHistorial');
+  const filtroHistorialEstado = document.getElementById('filtroHistorialEstado');
 
-  document.getElementById('buscarHistorial').addEventListener('input', aplicarFiltrosHistorial);
-  document.getElementById('filtroHistorialEstado').addEventListener('change', aplicarFiltrosHistorial);
+  if (buscarPendiente) {
+    buscarPendiente.addEventListener('input', aplicarFiltrosPendientes);
+  }
+
+  if (filtroPendienteEstado) {
+    filtroPendienteEstado.addEventListener('change', aplicarFiltrosPendientes);
+  }
+
+  if (buscarHistorial) {
+    buscarHistorial.addEventListener('input', aplicarFiltrosHistorial);
+  }
+
+  if (filtroHistorialEstado) {
+    filtroHistorialEstado.addEventListener('change', aplicarFiltrosHistorial);
+  }
 });
 
 async function cargarModuloJefatura() {
   try {
     await Promise.all([
+      cargarDashboardJefatura(),
       cargarPendientes(),
-      cargarHistorial()
+      cargarHistorial(),
+      cargarCalendario(),
+      cargarConflictos()
     ]);
+
     renderResumen();
+    renderUsuarioJefatura();
   } catch (error) {
     console.error('Error cargando módulo de jefatura:', error);
 
-    document.getElementById('tabla-pendientes-body').innerHTML = `
+    setContenido('tabla-pendientes-body', `
       <tr>
         <td colspan="8">No se pudieron cargar las solicitudes pendientes.</td>
       </tr>
-    `;
+    `);
 
-    document.getElementById('tabla-historial-body').innerHTML = `
+    setContenido('tabla-historial-body', `
       <tr>
         <td colspan="8">No se pudo cargar el historial.</td>
       </tr>
-    `;
+    `);
+
+    setContenido('tabla-calendario-body', `
+      <tr>
+        <td colspan="6">No se pudo cargar el calendario del equipo.</td>
+      </tr>
+    `);
+
+    setContenido('tabla-conflictos-body', `
+      <tr>
+        <td colspan="7">No se pudieron cargar las alertas de conflictos.</td>
+      </tr>
+    `);
   }
 }
 
-async function cargarPendientes() {
-  const token = localStorage.getItem('sesion_token');
-  const res = await fetch('/api/jefatura/pendientes', {
-    headers: { 'Authorization': 'Bearer ' + token }
+function getToken() {
+  return localStorage.getItem('sesion_token');
+}
+
+async function fetchConToken(url) {
+  const token = getToken();
+
+  const res = await fetch(url, {
+    headers: {
+      'Authorization': 'Bearer ' + token
+    }
   });
+
   const data = await res.json();
 
   if (!res.ok) {
-    throw new Error(data.mensaje || 'Error cargando pendientes');
+    throw new Error(data.mensaje || data.error || `Error llamando ${url}`);
   }
 
+  return data;
+}
+
+async function cargarDashboardJefatura() {
+  const data = await fetchConToken('/api/jefatura/dashboard');
+
+  if (!data.metricas) return;
+
+  document.getElementById('total-pendientes').textContent = data.metricas.pendientes ?? 0;
+  document.getElementById('total-aprobadas').textContent = data.metricas.aprobadas ?? 0;
+  document.getElementById('total-rechazadas').textContent = data.metricas.rechazadas ?? 0;
+  document.getElementById('total-procesadas').textContent = data.metricas.procesadas ?? 0;
+
+  const totalEquipo = document.getElementById('total-equipo');
+  const solicitudesMes = document.getElementById('solicitudes-mes');
+
+  if (totalEquipo) totalEquipo.textContent = data.metricas.totalEquipo ?? 0;
+  if (solicitudesMes) solicitudesMes.textContent = data.metricas.solicitudesMes ?? 0;
+}
+
+async function cargarPendientes() {
+  const data = await fetchConToken('/api/jefatura/pendientes');
   pendientesOriginales = Array.isArray(data.solicitudes) ? data.solicitudes : [];
   renderTablaPendientes(pendientesOriginales);
 }
 
 async function cargarHistorial() {
-  const token = localStorage.getItem('sesion_token');
-  const res = await fetch('/api/jefatura/historial', {
-    headers: { 'Authorization': 'Bearer ' + token }
-  });
-  const data = await res.json();
-
-  if (!res.ok) {
-    throw new Error(data.mensaje || 'Error cargando historial');
-  }
-
+  const data = await fetchConToken('/api/jefatura/historial');
   historialOriginal = Array.isArray(data.solicitudes) ? data.solicitudes : [];
   renderTablaHistorial(historialOriginal);
+}
+
+async function cargarCalendario() {
+  const data = await fetchConToken('/api/jefatura/calendario');
+  calendarioOriginal = Array.isArray(data.ausencias) ? data.ausencias : [];
+  renderTablaCalendario(calendarioOriginal);
+}
+
+async function cargarConflictos() {
+  const data = await fetchConToken('/api/jefatura/conflictos');
+  conflictosOriginales = Array.isArray(data.conflictos) ? data.conflictos : [];
+  renderTablaConflictos(conflictosOriginales);
 }
 
 function renderResumen() {
@@ -76,15 +143,25 @@ function renderResumen() {
   document.getElementById('total-aprobadas').textContent = aprobadas;
   document.getElementById('total-rechazadas').textContent = rechazadas;
   document.getElementById('total-procesadas').textContent = historialOriginal.length;
+}
 
-  const nombre = 'Jefatura';
-  document.getElementById('user-name-display').textContent = nombre;
-  document.getElementById('user-role-display').textContent = 'Bandeja de aprobación';
-  document.getElementById('user-avatar').textContent = nombre.charAt(0).toUpperCase();
+function renderUsuarioJefatura() {
+  const usuario = JSON.parse(localStorage.getItem('usuario_info') || '{}');
+  const nombre = usuario.nombre || usuario.username || 'Jefatura';
+  const rol = usuario.rol || 'Módulo de aprobación';
+
+  const userName = document.getElementById('user-name-display');
+  const userRole = document.getElementById('user-role-display');
+  const avatar = document.getElementById('user-avatar');
+
+  if (userName) userName.textContent = nombre;
+  if (userRole) userRole.textContent = rol;
+  if (avatar) avatar.textContent = nombre.charAt(0).toUpperCase();
 }
 
 function renderTablaPendientes(solicitudes) {
   const tbody = document.getElementById('tabla-pendientes-body');
+  if (!tbody) return;
 
   if (!solicitudes || solicitudes.length === 0) {
     tbody.innerHTML = `
@@ -119,6 +196,7 @@ function renderTablaPendientes(solicitudes) {
 
 function renderTablaHistorial(solicitudes) {
   const tbody = document.getElementById('tabla-historial-body');
+  if (!tbody) return;
 
   if (!solicitudes || solicitudes.length === 0) {
     tbody.innerHTML = `
@@ -142,9 +220,64 @@ function renderTablaHistorial(solicitudes) {
       <td>${badgeEstado(s.estado)}</td>
       <td>
         <div class="acciones">
-          <button class="btn btn-ver" type="button" onclick="verDetalle(${Number(s.id)}, true)">Ver</button>
+          <button class="btn btn-ver" type="button" onclick="verDetalle(${Number(s.id)})">Ver</button>
         </div>
       </td>
+    </tr>
+  `).join('');
+}
+
+function renderTablaCalendario(ausencias) {
+  const tbody = document.getElementById('tabla-calendario-body');
+  if (!tbody) return;
+
+  if (!ausencias || ausencias.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="6">
+          <div class="empty-state">No hay ausencias del equipo registradas.</div>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = ausencias.map(a => `
+    <tr>
+      <td>${escapeHtml(a.colaborador || 'Sin nombre')}</td>
+      <td>${formatearFecha(a.inicio)}</td>
+      <td>${formatearFecha(a.fin)}</td>
+      <td>${escapeHtml(String(a.dias ?? '-'))}</td>
+      <td>${escapeHtml(a.motivo || 'Vacaciones')}</td>
+      <td>${badgeEstado(a.estado)}</td>
+    </tr>
+  `).join('');
+}
+
+function renderTablaConflictos(conflictos) {
+  const tbody = document.getElementById('tabla-conflictos-body');
+  if (!tbody) return;
+
+  if (!conflictos || conflictos.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7">
+          <div class="empty-state">No se detectaron conflictos de ausencias.</div>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = conflictos.map(c => `
+    <tr>
+      <td>#${escapeHtml(c.id1)}</td>
+      <td>${escapeHtml(c.colaborador1)}</td>
+      <td>#${escapeHtml(c.id2)}</td>
+      <td>${escapeHtml(c.colaborador2)}</td>
+      <td>${formatearFecha(c.inicio_conflicto)}</td>
+      <td>${formatearFecha(c.fin_conflicto)}</td>
+      <td>${escapeHtml(c.tipo || 'Traslape')}</td>
     </tr>
   `).join('');
 }
@@ -206,9 +339,7 @@ function verDetalle(id) {
     pendientesOriginales.find(s => Number(s.id) === Number(id)) ||
     historialOriginal.find(s => Number(s.id) === Number(id));
 
-  if (!solicitud) {
-    return;
-  }
+  if (!solicitud) return;
 
   document.getElementById('detalle-grid').innerHTML = `
     <div class="detalle-item">
@@ -247,9 +378,7 @@ function cerrarModalDetalle() {
 
 function abrirModalDecision(id, accion) {
   const solicitud = pendientesOriginales.find(s => Number(s.id) === Number(id));
-  if (!solicitud) {
-    return;
-  }
+  if (!solicitud) return;
 
   solicitudSeleccionada = solicitud;
   accionSeleccionada = accion;
@@ -278,9 +407,7 @@ function cerrarModalDecision() {
 }
 
 async function confirmarDecision() {
-  if (!solicitudSeleccionada || !accionSeleccionada) {
-    return;
-  }
+  if (!solicitudSeleccionada || !accionSeleccionada) return;
 
   const observacion = document.getElementById('observacionDecision').value.trim();
   const endpoint = accionSeleccionada === 'aprobar'
@@ -288,7 +415,8 @@ async function confirmarDecision() {
     : '/api/jefatura/rechazar';
 
   try {
-    const token = localStorage.getItem('sesion_token');
+    const token = getToken();
+
     const res = await fetch(endpoint, {
       method: 'POST',
       headers: {
@@ -351,4 +479,9 @@ function escapeHtml(texto) {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
+}
+
+function setContenido(id, html) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = html;
 }

@@ -455,7 +455,7 @@
         <div class="brand-badge">✓</div>
         <div>
           <h1>Jefatura / Aprobación</h1>
-          <p>Gestión de solicitudes pendientes e historial procesado</p>
+          <p>Gestión de solicitudes pendientes, historial, calendario y conflictos</p>
         </div>
       </div>
 
@@ -471,6 +471,8 @@
     <nav class="nav-links">
       <a href="/jefatura_aprobacion.html" class="active">Bandeja de Aprobación</a>
       <a href="#historial">Historial Procesado</a>
+      <a href="#calendario-equipo">Calendario Equipo</a>
+      <a href="#conflictos-ausencias">Conflictos</a>
       <a href="#" onclick="cerrarSesion()">Cerrar Sesión</a>
     </nav>
 
@@ -497,6 +499,18 @@
         <div class="label">Total procesadas</div>
         <div class="value" id="total-procesadas">0</div>
         <div class="helper">Historial general del módulo</div>
+      </article>
+
+      <article class="card">
+        <div class="label">Total equipo</div>
+        <div class="value" id="total-equipo">0</div>
+        <div class="helper">Colaboradores con solicitudes registradas</div>
+      </article>
+
+      <article class="card">
+        <div class="label">Solicitudes del mes</div>
+        <div class="value" id="solicitudes-mes">0</div>
+        <div class="helper">Solicitudes creadas en el mes actual</div>
       </article>
     </section>
 
@@ -575,6 +589,65 @@
           <tbody id="tabla-historial-body">
             <tr>
               <td colspan="8">Cargando historial...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section" id="calendario-equipo">
+      <div class="section-header">
+        <div>
+          <h2>Calendario de ausencias del equipo</h2>
+          <p>Vista operativa de solicitudes aprobadas y pendientes del equipo.</p>
+        </div>
+      </div>
+
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Colaborador</th>
+              <th>Fecha Inicio</th>
+              <th>Fecha Fin</th>
+              <th>Días</th>
+              <th>Motivo</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody id="tabla-calendario-body">
+            <tr>
+              <td colspan="6">Cargando calendario del equipo...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section" id="conflictos-ausencias">
+      <div class="section-header">
+        <div>
+          <h2>Alertas de conflictos de ausencias</h2>
+          <p>Solicitudes que tienen traslape de fechas entre colaboradores.</p>
+        </div>
+      </div>
+
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>ID 1</th>
+              <th>Colaborador 1</th>
+              <th>ID 2</th>
+              <th>Colaborador 2</th>
+              <th>Inicio conflicto</th>
+              <th>Fin conflicto</th>
+              <th>Tipo</th>
+            </tr>
+          </thead>
+          <tbody id="tabla-conflictos-body">
+            <tr>
+              <td colspan="7">Cargando alertas de conflictos...</td>
             </tr>
           </tbody>
         </table>

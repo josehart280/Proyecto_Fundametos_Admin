@@ -13,7 +13,6 @@ const mailer = require('./mailer');
 
 const PORT = process.env.PORT || 3001;
 
-// Función auxiliar para obtener la IP del cliente
 function obtenerIPCliente(req) {
   return req.headers['x-forwarded-for']?.split(',')[0].trim() ||
          req.socket.remoteAddress ||
@@ -62,12 +61,65 @@ async function manejarAPI(req, res) {
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (method === 'OPTIONS') {
     res.writeHead(204);
     res.end();
     return;
+  }
+
+  const getBody = () => new Promise(resolve => {
+    let b = '';
+    req.on('data', c => b += c);
+    req.on('end', () => resolve(JSON.parse(b || '{}')));
+  });
+
+  async function validarTokenJefatura(req, res) {
+    const token = req.headers['authorization']?.replace('Bearer ', '');
+
+    if (!token) {
+      res.writeHead(401);
+      res.end(JSON.stringify({ success: false, mensaje: 'Token requerido' }));
+      return false;
+    }
+
+    const sesion = await auth.validarSesion(token);
+
+    if (!sesion.valida) {
+      res.writeHead(401);
+      res.end(JSON.stringify({ success: false, mensaje: 'Sesión inválida o expirada' }));
+      return false;
+    }
+
+    const usuarioInfo = sesion.usuario || sesion.datos || {};
+    const idUsuario = usuarioInfo.id_Usuario || usuarioInfo.idUsuario || usuarioInfo.id;
+
+    if (!idUsuario) {
+      res.writeHead(401);
+      res.end(JSON.stringify({ success: false, mensaje: 'No se pudo identificar al usuario de la sesión' }));
+      return false;
+    }
+
+    const roles = await db.query(`
+      SELECT r.Nombre as Rol
+      FROM Usuarios u
+      JOIN Nombramientos n ON u.id_Personal = n.id_Personal
+      JOIN Roles r ON n.id_Rol = r.id_Rol
+      WHERE u.id_Usuario = ${Number(idUsuario)}
+    `);
+
+    const esJefatura = roles && roles.some(r =>
+      (r.Rol || '').toLowerCase().includes('jefatura')
+    );
+
+    if (!esJefatura) {
+      res.writeHead(403);
+      res.end(JSON.stringify({ success: false, mensaje: 'No tiene permisos de jefatura' }));
+      return false;
+    }
+
+    return true;
   }
 
   try {
@@ -82,32 +134,52 @@ async function manejarAPI(req, res) {
     }
 
     if (url === '/api/usuarios' && method === 'GET') {
-      const usuarios = await db.query('SELECT TOP 100 * FROM usuarios');
+      const usuarios = await db.query('SELECT TOP 100 * FROM Usuarios');
       res.writeHead(200);
       res.end(JSON.stringify(usuarios));
       return;
     }
 
-    // --- NUEVAS RUTAS PARA EL MÓDULO COLABORADOR (PRODUCCIÓN SQL) ---
-    const getBody = () => new Promise(resolve => { let b=''; req.on('data', c=>b+=c); req.on('end', ()=>resolve(JSON.parse(b||'{}'))); });
-
     if (url === '/api/dashboard' && method === 'GET') {
-      // 1: Carga datos biológicos y saldo Consolidado
-      const userRes = await db.query(`SELECT p.Nombre, p.Apellido, s.saldo_Disponible as saldo_vacaciones FROM Personal p JOIN Saldos_Vacacionales s ON p.id_Personal = s.id_Personal WHERE p.id_Personal = 1`);
+      const userRes = await db.query(`
+        SELECT p.Nombre, p.Apellido, s.saldo_Disponible as saldo_vacaciones
+        FROM Personal p
+        JOIN Saldos_Vacacionales s ON p.id_Personal = s.id_Personal
+        WHERE p.id_Personal = 1
+      `);
+
       const usuario = userRes[0] || { saldo_vacaciones: 15 };
-      
-      // 1.5: Carga Nombramientos (Magia Multipuesto)
-      const nombRes = await db.query(`SELECT r.Nombre as Rol, c.Nombre as Carrera, n.Tipo_Nombramiento as Tipo, n.Fraccion_Tiempo FROM Nombramientos n LEFT JOIN Roles r ON n.id_Rol = r.id_Rol LEFT JOIN Carreras c ON n.id_Carrera = c.id_Carrera WHERE n.id_Personal = 1`);
+
+      const nombRes = await db.query(`
+        SELECT r.Nombre as Rol, c.Nombre as Carrera, n.Tipo_Nombramiento as Tipo, n.Fraccion_Tiempo
+        FROM Nombramientos n
+        LEFT JOIN Roles r ON n.id_Rol = r.id_Rol
+        LEFT JOIN Carreras c ON n.id_Carrera = c.id_Carrera
+        WHERE n.id_Personal = 1
+      `);
+
       usuario.nombramientos = nombRes;
-      
-      // 2: Carga sus solicitudes conjugadas al humano
-      const solicitudes = await db.query("SELECT id_Solicitud as id, CONVERT(varchar, fecha_Inicio, 23) as inicio, CONVERT(varchar, fecha_Fin, 23) as fin, dias_Solicitados as dias, Motivo as motivo, Estado as estado FROM Solicitudes_Vacaciones WHERE id_Personal = 1");
-      // 3: Carga feriados institucionales reales
-      const feriados = await db.query("SELECT CONVERT(varchar, fecha, 23) as fecha, descripcion FROM Feriados");
+
+      const solicitudes = await db.query(`
+        SELECT
+          id_Solicitud as id,
+          CONVERT(varchar, fecha_Inicio, 23) as inicio,
+          CONVERT(varchar, fecha_Fin, 23) as fin,
+          dias_Solicitados as dias,
+          Motivo as motivo,
+          Estado as estado
+        FROM Solicitudes_Vacaciones
+        WHERE id_Personal = 1
+      `);
+
+      const feriados = await db.query(`
+        SELECT CONVERT(varchar, fecha, 23) as fecha, descripcion
+        FROM Feriados
+      `);
 
       res.writeHead(200);
-      res.end(JSON.stringify({ 
-        usuario: usuario, 
+      res.end(JSON.stringify({
+        usuario,
         vacacionesProgramadas: solicitudes,
         feriados: feriados.map(f => f.fecha)
       }));
@@ -116,85 +188,122 @@ async function manejarAPI(req, res) {
 
     if (url === '/api/solicitudes' && method === 'POST') {
       const data = await getBody();
-      
-      // 1. Inserta la solicitud real en la BD usando la estructura correcta
-      await db.query(`INSERT INTO Solicitudes_Vacaciones (id_Personal, fecha_Inicio, fecha_Fin, dias_Solicitados, Motivo, Estado) VALUES (1, '${data.fInicio}', '${data.fFin}', ${data.dias}, '${data.motivo || 'Vacaciones'}', 'Pendiente')`);
-      
-      // 2. Bloquear Saldo (Restar cantidad cobrada)
-      await db.query(`UPDATE Saldos_Vacacionales SET saldo_Disponible = saldo_Disponible - ${data.dias} WHERE id_Personal = 1`);
-      
-      // 3. Registrar Movimiento (Kardex Contable Temporal)
-      await db.query(`INSERT INTO Movimientos_Saldo (id_Personal, Tipo_Movimiento, Dias, Motivo) VALUES (1, 'Resta', ${data.dias}, 'Cobro automático por Solicitud de Vacaciones')`);
-      
-      res.writeHead(200); res.end(JSON.stringify({ success: true }));
+
+      await db.query(`
+        INSERT INTO Solicitudes_Vacaciones
+        (id_Personal, fecha_Inicio, fecha_Fin, dias_Solicitados, Motivo, Estado)
+        VALUES
+        (1, '${data.fInicio}', '${data.fFin}', ${data.dias}, '${data.motivo || 'Vacaciones'}', 'Pendiente')
+      `);
+
+      await db.query(`
+        UPDATE Saldos_Vacacionales
+        SET saldo_Disponible = saldo_Disponible - ${data.dias}
+        WHERE id_Personal = 1
+      `);
+
+      await db.query(`
+        INSERT INTO Movimientos_Saldo (id_Personal, Tipo_Movimiento, Dias, Motivo)
+        VALUES (1, 'Resta', ${data.dias}, 'Cobro automático por Solicitud de Vacaciones')
+      `);
+
+      res.writeHead(200);
+      res.end(JSON.stringify({ success: true }));
       return;
     }
 
     if (url === '/api/cancelar' && method === 'POST') {
       const data = await getBody();
-      
-      // 1. Obtener la cantidad de días cobrados en la solicitud original
-      const reqInfo = await db.query(`SELECT dias_Solicitados FROM Solicitudes_Vacaciones WHERE id_Solicitud = ${data.id}`);
-      if(reqInfo && reqInfo.length > 0) {
+
+      const reqInfo = await db.query(`
+        SELECT dias_Solicitados
+        FROM Solicitudes_Vacaciones
+        WHERE id_Solicitud = ${data.id}
+      `);
+
+      if (reqInfo && reqInfo.length > 0) {
         const diasADevolver = reqInfo[0].dias_Solicitados;
-        
-        // 2. Reembolsar Saldo Oficial
-        await db.query(`UPDATE Saldos_Vacacionales SET saldo_Disponible = saldo_Disponible + ${diasADevolver} WHERE id_Personal = 1`);
-        
-        // 3. Registrar Movimiento (Reembolso)
-        await db.query(`INSERT INTO Movimientos_Saldo (id_Personal, Tipo_Movimiento, Dias, Motivo) VALUES (1, 'Suma', ${diasADevolver}, 'Reembolso por Anulación de Solicitud de Vacaciones')`);
+
+        await db.query(`
+          UPDATE Saldos_Vacacionales
+          SET saldo_Disponible = saldo_Disponible + ${diasADevolver}
+          WHERE id_Personal = 1
+        `);
+
+        await db.query(`
+          INSERT INTO Movimientos_Saldo (id_Personal, Tipo_Movimiento, Dias, Motivo)
+          VALUES (1, 'Suma', ${diasADevolver}, 'Reembolso por Anulación de Solicitud de Vacaciones')
+        `);
       }
-      
-      // 4. Cancela la solicitud en la BD (Update estado)
-      await db.query(`UPDATE Solicitudes_Vacaciones SET Estado = 'Cancelada' WHERE id_Solicitud = ${data.id}`);
-      
-      res.writeHead(200); res.end(JSON.stringify({ success: true }));
+
+      await db.query(`
+        UPDATE Solicitudes_Vacaciones
+        SET Estado = 'Cancelada'
+        WHERE id_Solicitud = ${data.id}
+      `);
+
+      res.writeHead(200);
+      res.end(JSON.stringify({ success: true }));
       return;
     }
 
-    // ===== Helper: Validar token + rol para rutas de jefatura =====
-    async function validarTokenJefatura(req, res) {
-      const token = req.headers['authorization']?.replace('Bearer ', '');
-      if (!token) {
-        res.writeHead(401);
-        res.end(JSON.stringify({ success: false, mensaje: 'Token requerido' }));
-        return false;
-      }
-      const sesion = await auth.validarSesion(token);
-      if (!sesion.valida) {
-        res.writeHead(401);
-        res.end(JSON.stringify({ success: false, mensaje: 'Sesión inválida o expirada' }));
-        return false;
-      }
+    if (url === '/api/jefatura/dashboard' && method === 'GET') {
+      if (!(await validarTokenJefatura(req, res))) return;
 
-      // Validar que el usuario tenga rol de Jefatura (server-side)
-      const roles = await db.query(
-        `SELECT r.Nombre as Rol
-         FROM Usuarios u
-         JOIN Nombramientos n ON u.id_Personal = n.id_Personal
-         JOIN Roles r ON n.id_Rol = r.id_Rol
-         WHERE u.id_Usuario = @id_usuario`,
-        { id_usuario: sesion.usuario.id_Usuario }
-      );
+      const pendientesRes = await db.query(`
+        SELECT COUNT(*) AS total
+        FROM Solicitudes_Vacaciones
+        WHERE Estado = 'Pendiente'
+      `);
 
-      const esJefatura = roles && roles.some(r => 
-        r.Rol.toLowerCase().includes('jefatura')
-      );
+      const aprobadasRes = await db.query(`
+        SELECT COUNT(*) AS total
+        FROM Solicitudes_Vacaciones
+        WHERE Estado = 'Aprobada'
+      `);
 
-      if (!esJefatura) {
-        res.writeHead(403);
-        res.end(JSON.stringify({ success: false, mensaje: 'No tiene permisos de jefatura' }));
-        return false;
-      }
+      const rechazadasRes = await db.query(`
+        SELECT COUNT(*) AS total
+        FROM Solicitudes_Vacaciones
+        WHERE Estado = 'Rechazada'
+      `);
 
-      return true;
+      const procesadasRes = await db.query(`
+        SELECT COUNT(*) AS total
+        FROM Solicitudes_Vacaciones
+        WHERE Estado IN ('Aprobada', 'Rechazada')
+      `);
+
+      const equipoRes = await db.query(`
+        SELECT COUNT(DISTINCT id_Personal) AS total
+        FROM Solicitudes_Vacaciones
+      `);
+
+      const mesRes = await db.query(`
+        SELECT COUNT(*) AS total
+        FROM Solicitudes_Vacaciones
+        WHERE MONTH(fecha_Creacion) = MONTH(GETDATE())
+          AND YEAR(fecha_Creacion) = YEAR(GETDATE())
+      `);
+
+      res.writeHead(200);
+      res.end(JSON.stringify({
+        success: true,
+        metricas: {
+          pendientes: pendientesRes[0]?.total || 0,
+          aprobadas: aprobadasRes[0]?.total || 0,
+          rechazadas: rechazadasRes[0]?.total || 0,
+          procesadas: procesadasRes[0]?.total || 0,
+          totalEquipo: equipoRes[0]?.total || 0,
+          solicitudesMes: mesRes[0]?.total || 0
+        }
+      }));
+      return;
     }
 
-        // ===== MÓDULO JEFATURA / APROBACIÓN =====
-
-    // GET: Bandeja de solicitudes pendientes
     if (url === '/api/jefatura/pendientes' && method === 'GET') {
       if (!(await validarTokenJefatura(req, res))) return;
+
       const solicitudesPendientes = await db.query(`
         SELECT
           sv.id_Solicitud as id,
@@ -218,9 +327,9 @@ async function manejarAPI(req, res) {
       return;
     }
 
-    // GET: Historial de solicitudes procesadas
     if (url === '/api/jefatura/historial' && method === 'GET') {
       if (!(await validarTokenJefatura(req, res))) return;
+
       const historial = await db.query(`
         SELECT
           sv.id_Solicitud as id,
@@ -244,9 +353,72 @@ async function manejarAPI(req, res) {
       return;
     }
 
-    // POST: Aprobar solicitud
+    if (url === '/api/jefatura/calendario' && method === 'GET') {
+      if (!(await validarTokenJefatura(req, res))) return;
+
+      const ausencias = await db.query(`
+        SELECT
+          sv.id_Solicitud as id,
+          CONVERT(varchar, sv.fecha_Inicio, 23) as inicio,
+          CONVERT(varchar, sv.fecha_Fin, 23) as fin,
+          sv.dias_Solicitados as dias,
+          sv.Motivo as motivo,
+          sv.Estado as estado,
+          (ISNULL(p.Nombre, '') + ' ' + ISNULL(p.Apellido, '')) as colaborador
+        FROM Solicitudes_Vacaciones sv
+        INNER JOIN Personal p ON sv.id_Personal = p.id_Personal
+        WHERE sv.Estado IN ('Pendiente', 'Aprobada')
+        ORDER BY sv.fecha_Inicio ASC
+      `);
+
+      res.writeHead(200);
+      res.end(JSON.stringify({
+        success: true,
+        ausencias
+      }));
+      return;
+    }
+
+    if (url === '/api/jefatura/conflictos' && method === 'GET') {
+      if (!(await validarTokenJefatura(req, res))) return;
+
+      const conflictos = await db.query(`
+        SELECT
+          a.id_Solicitud AS id1,
+          (ISNULL(pa.Nombre, '') + ' ' + ISNULL(pa.Apellido, '')) AS colaborador1,
+          b.id_Solicitud AS id2,
+          (ISNULL(pb.Nombre, '') + ' ' + ISNULL(pb.Apellido, '')) AS colaborador2,
+          CONVERT(varchar,
+            CASE WHEN a.fecha_Inicio > b.fecha_Inicio THEN a.fecha_Inicio ELSE b.fecha_Inicio END
+          , 23) AS inicio_conflicto,
+          CONVERT(varchar,
+            CASE WHEN a.fecha_Fin < b.fecha_Fin THEN a.fecha_Fin ELSE b.fecha_Fin END
+          , 23) AS fin_conflicto,
+          'Traslape de fechas' AS tipo
+        FROM Solicitudes_Vacaciones a
+        INNER JOIN Solicitudes_Vacaciones b
+          ON a.id_Solicitud < b.id_Solicitud
+         AND a.id_Personal <> b.id_Personal
+         AND a.Estado IN ('Pendiente', 'Aprobada')
+         AND b.Estado IN ('Pendiente', 'Aprobada')
+         AND a.fecha_Inicio <= b.fecha_Fin
+         AND b.fecha_Inicio <= a.fecha_Fin
+        INNER JOIN Personal pa ON a.id_Personal = pa.id_Personal
+        INNER JOIN Personal pb ON b.id_Personal = pb.id_Personal
+        ORDER BY inicio_conflicto ASC
+      `);
+
+      res.writeHead(200);
+      res.end(JSON.stringify({
+        success: true,
+        conflictos
+      }));
+      return;
+    }
+
     if (url === '/api/jefatura/aprobar' && method === 'POST') {
       if (!(await validarTokenJefatura(req, res))) return;
+
       const data = await getBody();
 
       if (!data.id) {
@@ -296,9 +468,9 @@ async function manejarAPI(req, res) {
       return;
     }
 
-    // POST: Rechazar solicitud
     if (url === '/api/jefatura/rechazar' && method === 'POST') {
       if (!(await validarTokenJefatura(req, res))) return;
+
       const data = await getBody();
 
       if (!data.id) {
@@ -337,20 +509,17 @@ async function manejarAPI(req, res) {
       const diasADevolver = Number(solicitud[0].dias_Solicitados || 0);
       const idPersonal = Number(solicitud[0].id_Personal);
 
-      // Devolver el saldo porque la solicitud fue rechazada
       await db.query(`
         UPDATE Saldos_Vacacionales
         SET saldo_Disponible = saldo_Disponible + ${diasADevolver}
         WHERE id_Personal = ${idPersonal}
       `);
 
-      // Registrar el movimiento de devolución
       await db.query(`
         INSERT INTO Movimientos_Saldo (id_Personal, Tipo_Movimiento, Dias, Motivo)
         VALUES (${idPersonal}, 'Suma', ${diasADevolver}, 'Reembolso por rechazo de solicitud de vacaciones')
       `);
 
-      // Cambiar el estado de la solicitud
       await db.query(`
         UPDATE Solicitudes_Vacaciones
         SET Estado = 'Rechazada'
@@ -364,7 +533,6 @@ async function manejarAPI(req, res) {
       }));
       return;
     }
-
 
     if (url === '/api/validar-sesion' && method === 'GET') {
       const token = req.headers['authorization']?.replace('Bearer ', '');
@@ -391,13 +559,9 @@ async function manejarAPI(req, res) {
       return;
     }
 
-    // ===== MÓDULO DE AUTENTICACIÓN =====
-
-    // HU 1: POST /api/login - Validar credenciales y crear sesión
     if (url === '/api/login' && method === 'POST') {
       const data = await getBody();
-      
-      // Validar entrada
+
       if (!data.username || !data.password) {
         res.writeHead(400);
         res.end(JSON.stringify({
@@ -407,14 +571,12 @@ async function manejarAPI(req, res) {
         return;
       }
 
-      // Validar credenciales con auth.js
       const validacion = await auth.validarCredenciales(data.username, data.password);
       const ipCliente = obtenerIPCliente(req);
-      
+
       if (!validacion.valido) {
-        // Registrar intento fallido con IP
         await auth.registrarIntento(null, 'fallido', validacion.codigo, ipCliente);
-        
+
         res.writeHead(401);
         res.end(JSON.stringify({
           exito: false,
@@ -424,12 +586,10 @@ async function manejarAPI(req, res) {
         return;
       }
 
-      // Registrar intento exitoso con IP (ya se registró en validarCredenciales pero sin IP)
       await auth.registrarIntento(validacion.usuario.id_Usuario, 'exitoso', 'Login exitoso', ipCliente);
-      
-      // Crear sesión
+
       const sesion = await auth.crearSesion(validacion.usuario.id_Usuario);
-      
+
       res.writeHead(200);
       res.end(JSON.stringify({
         exito: true,
@@ -441,11 +601,10 @@ async function manejarAPI(req, res) {
       return;
     }
 
-    // HU 2: POST /api/logout - Cerrar sesión
     if (url === '/api/logout' && method === 'POST') {
       const data = await getBody();
       const token = data.token || req.headers['authorization']?.replace('Bearer ', '');
-      
+
       if (!token) {
         res.writeHead(400);
         res.end(JSON.stringify({
@@ -456,16 +615,15 @@ async function manejarAPI(req, res) {
       }
 
       const resultado = await auth.cerrarSesion(token);
-      
+
       res.writeHead(200);
       res.end(JSON.stringify(resultado));
       return;
     }
 
-    // HU 4 PASO 1: POST /api/solicitar-recuperacion - Generar token y enviar email
     if (url === '/api/solicitar-recuperacion' && method === 'POST') {
       const data = await getBody();
-      
+
       if (!data.identificador) {
         res.writeHead(400);
         res.end(JSON.stringify({
@@ -475,21 +633,9 @@ async function manejarAPI(req, res) {
         return;
       }
 
-      // Buscar usuario
       const usuario = await auth.buscarUsuarioPorCorreoOUsername(data.identificador);
-      
-      if (!usuario) {
-        // NO revelamos si existe o no el usuario por seguridad
-        res.writeHead(200);
-        res.end(JSON.stringify({
-          exito: true,
-          mensaje: 'Si los datos son correctos, recibirá un correo con las instrucciones.'
-        }));
-        return;
-      }
 
-      // Verificar que esté activo
-      if (usuario.Estado !== 'Activo') {
+      if (!usuario || usuario.Estado !== 'Activo') {
         res.writeHead(200);
         res.end(JSON.stringify({
           exito: true,
@@ -499,28 +645,23 @@ async function manejarAPI(req, res) {
       }
 
       try {
-        // Generar token de recuperación
         const tokenRecuperacion = await auth.generarTokenRecuperacion(usuario.id_Usuario);
-        
-        // Enviar email
-        const emailResult = await mailer.enviarRecuperacionPassword(
+
+        await mailer.enviarRecuperacionPassword(
           usuario.Correo,
           usuario.Nombre,
           tokenRecuperacion.token,
           auth.CONFIG.DURACION_TOKEN_RECUPERACION_MINUTOS
         );
 
-        // En desarrollo: devolver token para testing
-        // En producción: NO devolver token (solo enviar por email)
         const devReturn = {
           exito: true,
           mensaje: 'Enlace de recuperación enviado exitosamente.'
         };
 
         if (process.env.NODE_ENV === 'development' && !process.env.EMAIL_USER) {
-          // Modo desarrollo: incluir token para testing
           devReturn.token = tokenRecuperacion.token;
-          devReturn.mensaje = '✅ [DESARROLLO] Token: ' + tokenRecuperacion.token.substring(0, 10) + '... (revisa consola o correo)';
+          devReturn.mensaje = '✅ [DESARROLLO] Token: ' + tokenRecuperacion.token.substring(0, 10) + '...';
         }
 
         res.writeHead(200);
@@ -536,11 +677,9 @@ async function manejarAPI(req, res) {
       return;
     }
 
-    // HU 4 PASO 2: POST /api/cambiar-password - Cambiar contraseña con token
     if (url === '/api/cambiar-password' && method === 'POST') {
       const data = await getBody();
-      
-      // Validaciones
+
       if (!data.token || !data.nueva_password || !data.confirmar_password) {
         res.writeHead(400);
         res.end(JSON.stringify({
@@ -559,7 +698,6 @@ async function manejarAPI(req, res) {
         return;
       }
 
-      // Validar fortaleza de contraseña (mismo cliente-side pero también validamos server-side)
       const validaciones = [];
       if (data.nueva_password.length < 8) validaciones.push('Mínimo 8 caracteres');
       if (!/[a-z]/.test(data.nueva_password)) validaciones.push('Letras minúsculas');
@@ -576,52 +714,18 @@ async function manejarAPI(req, res) {
         return;
       }
 
-      if (data.nueva_password.length < 6) {
-        res.writeHead(400);
-        res.end(JSON.stringify({
-          exito: false,
-          mensaje: 'La contraseña debe tener al menos 6 caracteres.'
-        }));
-        return;
-      }
-
-      // Cambiar contraseña
       const resultado = await auth.cambiarPasswordConToken(data.token, data.nueva_password);
-      
-      if (resultado.exito) {
-        // Obtener información del usuario para enviar confirmación
-        try {
-          const sesiones = await db.query(
-            `SELECT p.Nombre, p.Correo FROM Usuarios u
-             JOIN Personal p ON u.id_Personal = p.id_Personal
-             WHERE u.id_Usuario = (
-               SELECT id_Usuario FROM Recuperacion_Password WHERE Token = @token
-             )`,
-            { token: data.token }
-          );
-          
-          if (sesiones && sesiones.length > 0) {
-            await mailer.enviarConfirmacionCambioPassword(
-              sesiones[0].Correo,
-              sesiones[0].Nombre
-            );
-          }
-        } catch (err) {
-          console.error('Error enviando confirmación:', err);
-        }
-      }
 
       res.writeHead(resultado.exito ? 200 : 400);
       res.end(JSON.stringify(resultado));
       return;
     }
 
-    // HU 3: GET /api/auditar/intentos-acceso - Obtener intentos de acceso (Auditoría)
     if (url === '/api/auditar/intentos-acceso' && method === 'GET') {
       try {
-        const token = req.headers['authorization']?.replace('Bearer ', '') || 
-                      new URL(`http://localhost${req.url}`, 'http://localhost').searchParams.get('token');
-        
+        const token = req.headers['authorization']?.replace('Bearer ', '') ||
+          new URL(`http://localhost${req.url}`, 'http://localhost').searchParams.get('token');
+
         if (!token) {
           res.writeHead(401);
           res.end(JSON.stringify({
@@ -631,8 +735,8 @@ async function manejarAPI(req, res) {
           return;
         }
 
-        // Validar sesión
         const validacion = await auth.validarSesion(token);
+
         if (!validacion.valida) {
           res.writeHead(401);
           res.end(JSON.stringify({
@@ -642,19 +746,18 @@ async function manejarAPI(req, res) {
           return;
         }
 
-        // Obtener intentos de acceso
-        const intentos = await db.query(
-          `SELECT TOP 100 
+        const intentos = await db.query(`
+          SELECT TOP 100
             id_Intento, id_Usuario, Fecha_Intento, Resultado, Razon_Fallo, IP_Cliente
-           FROM Intentos_Acceso
-           ORDER BY Fecha_Intento DESC`
-        );
+          FROM Intentos_Acceso
+          ORDER BY Fecha_Intento DESC
+        `);
 
         res.writeHead(200);
         res.end(JSON.stringify({
           exito: true,
           total: intentos.length,
-          intentos: intentos
+          intentos
         }));
         return;
       } catch (error) {
@@ -670,7 +773,6 @@ async function manejarAPI(req, res) {
 
     res.writeHead(404);
     res.end(JSON.stringify({ error: 'Ruta no encontrada' }));
-
   } catch (error) {
     console.error('Error en API:', error);
     res.writeHead(500);
@@ -686,7 +788,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  let filePath = url === '/' ? '/index.html' : url;
+  const filePath = url === '/' ? '/index.html' : url;
   const fullPath = path.join(__dirname, 'public', filePath);
   servirArchivo(req, res, fullPath);
 });
@@ -700,21 +802,24 @@ async function iniciarServidor() {
 ║   Servidor iniciado                                ║
 ║   http://localhost:${PORT}                          ║
 ║                                                    ║
-║   Rutas de API disponibles:                        ║
-║   📌 Autenticación:                                ║
-║      POST   /api/login                      (HU-1) ║
-║      POST   /api/logout                     (HU-2) ║
-║      POST   /api/solicitar-recuperacion     (HU-4) ║
-║      POST   /api/cambiar-password           (HU-4) ║
+║   📌 Autenticación                                 ║
+║      POST   /api/login                             ║
+║      POST   /api/logout                            ║
+║      GET    /api/validar-sesion                    ║
 ║                                                    ║
-║   📅 Colaborador:                                  ║
-║      GET    /api/dashboard                        ║
-║      POST   /api/solicitudes                      ║
-║      POST   /api/cancelar                         ║
+║   📅 Colaborador                                   ║
+║      GET    /api/dashboard                         ║
+║      POST   /api/solicitudes                       ║
+║      POST   /api/cancelar                          ║
 ║                                                    ║
-║   🔍 Testing:                                      ║
-║      GET    /api/test                             ║
-║      GET    /api/usuarios                         ║
+║   ✅ Jefatura                                      ║
+║      GET    /api/jefatura/dashboard                ║
+║      GET    /api/jefatura/pendientes               ║
+║      GET    /api/jefatura/historial                ║
+║      GET    /api/jefatura/calendario               ║
+║      GET    /api/jefatura/conflictos               ║
+║      POST   /api/jefatura/aprobar                  ║
+║      POST   /api/jefatura/rechazar                 ║
 ╚════════════════════════════════════════════════════╝
     `);
   });
