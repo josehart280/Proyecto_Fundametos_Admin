@@ -15,19 +15,19 @@ Proyecto estudiantil desarrollado para la asignatura de **Fundamentos de Adminis
 
 ## Progreso del Proyecto
 
-### Estado General: 🟢 Funcional (65%)
+### Estado General: 🟢 Funcional (90%)
 
 ```
-████████████████████████████░░░░░░░░░░░░░░░░░░░  65%
+████████████████████████████████████████████░░░  90%
 ```
 
 ### Progreso por Módulos
 
 | Módulo | Estado | Progreso | Responsable |
 |--------|--------|----------|-------------|
-| **🟢 Colaborador** | Funcional | `████████████████████████░░░░░` **95%** | Geral, Dencel, Karolayn |
-| **🟢 Autenticación** | Funcional | `█████████████████████████░░░░░` **85%** | Josué, Geral |
-| **🔴 Aprobación** | No iniciado | `░░░░░░░░░░░░░░░░░░░░░░░░░░░` **0%** | Dencel, Karolayn |
+| **🟢 Colaborador** | Funcional | `████████████████████████████░░` **95%** | Geral, Dencel, Karolayn |
+| **🟢 Autenticación** | Funcional | `████████████████████████████░░` **95%** | Josué, Geral |
+| **🟢 Jefatura/Aprobación** | Funcional | `████████████████████████████░░` **95%** | Dencel, Karolayn |
 | **🔴 Administración** | No iniciado | `░░░░░░░░░░░░░░░░░░░░░░░░░░░` **0%** | Sebastián |
 | **🟡 Auditoría** | Parcial | `████████░░░░░░░░░░░░░░░░░░░` **40%** | Jose |
 
@@ -38,18 +38,19 @@ Proyecto estudiantil desarrollado para la asignatura de **Fundamentos de Adminis
 - [x] Solicitud de vacaciones con validaciones
 - [x] Mis Solicitudes (historial con filtros)
 - [x] Cancelación de solicitudes
+- [x] Módulo Jefatura/Aprobación (bandeja de entrada)
 - [x] APIs REST para gestión de vacaciones
 - [x] Diseño Glassmorphism
-- [x] Login y logout con tokens de sesión
+- [x] Login y logout con tokens de sesión (8h)
 - [x] Recuperación de contraseña por email
 - [x] Auditoría de intentos de acceso
+- [x] Auditoría de acciones (audit.js)
 
 #### 🚧 En Desarrollo
 - [ ] Auditoría completa de acciones
 
 #### 🔴 Pendientes
 - [ ] Corrección SQL Injection (CRÍTICO)
-- [ ] Módulo de Aprobación (jefaturas)
 - [ ] Módulo de Administración (RRHH)
 - [ ] Reportes exportables
 - [ ] Notificaciones por email
@@ -163,9 +164,11 @@ Proyecto_Fundametos_Admin/
 | Ruta | Descripción | Autor |
 |------|-------------|-------|
 | `/index.html` | Landing page del proyecto | - |
+| `/login.html` | Pantalla de inicio de sesión | Josué |
 | `/dashboard.html` | Dashboard con saldo y calendario | Geral |
 | `/solicitud.html` | Formulario de nueva solicitud | Geral |
 | `/mis_solicitudes.html` | Historial con filtros y búsqueda | Dencel |
+| `/jefatura_aprobacion.html` | Bandeja de aprobación (Jefatura/Director) | Dencel, Karolayn |
 
 ### APIs REST
 
@@ -353,8 +356,8 @@ Proyecto académico - Colegio Universitario de Cartago (CUCR)
 
 ---
 
-**Última actualización**: Marzo 2026
-**Versión**: 1.0.0
+**Última actualización**: Abril 2026
+**Versión**: 1.2.0
 **Estado**: En desarrollo activo
 
 ---
