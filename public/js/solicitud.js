@@ -4,6 +4,8 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
+    const tokenSesion = localStorage.getItem('sesion_token');
+
     // 1. Entradas (Referencia a elementos del DOM)
     const form = document.getElementById('formSolicitud');
     const inputInicio = document.getElementById('fecha_inicio');
@@ -19,15 +21,32 @@ document.addEventListener('DOMContentLoaded', () => {
     // Cargar parámetros reales al inicio
     async function inicializarFormulario() {
         try {
-            const response = await fetch('/api/dashboard');
+            const response = await fetch('/api/dashboard', {
+                headers: {
+                    'Authorization': `Bearer ${tokenSesion}`
+                }
+            });
             const data = await response.json();
             solicitudesExistentes = data.vacacionesProgramadas || [];
             saldoDisponible = data.usuario ? data.usuario.saldo_vacaciones : 0;
             feriadosInstitucionales = data.feriados || [];
             
             // Actualizamos la caja de saldo del DOM si existe (UX)
-            const saldoNode = document.querySelector('.summary-item .stat-value');
-            if(saldoNode) saldoNode.textContent = saldoDisponible.toFixed(1);
+            const saldoNode = document.getElementById('saldo-disponible-view');
+            if(saldoNode) saldoNode.textContent = `${saldoDisponible.toFixed(1)} días`;
+
+            // Actualizar identidad en Header
+            const nameNode = document.getElementById('user-name-display');
+            if(nameNode) nameNode.textContent = `${data.usuario.Nombre} ${data.usuario.Apellido.charAt(0)}.`;
+
+            const roleNode = document.getElementById('user-role-display');
+            if(roleNode && data.usuario.nombramientos && data.usuario.nombramientos.length > 0) {
+                const primaryRole = data.usuario.nombramientos[0];
+                roleNode.textContent = `${primaryRole.Rol} • ${primaryRole.Tipo}`;
+            }
+
+            const avatarNode = document.getElementById('user-avatar');
+            if(avatarNode) avatarNode.textContent = (data.usuario.Nombre.charAt(0) || 'U').toUpperCase();
         } catch (e) {
             console.error("Error crítico cargando perfil desde BD.");
         }
@@ -173,7 +192,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const total = solicitarCalculoBD(fInicio, fFin);
                 await fetch('/api/solicitudes', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${tokenSesion}`
+                    },
                     body: JSON.stringify({ 
                         fInicio: fInicio, 
                         fFin: fFin, 

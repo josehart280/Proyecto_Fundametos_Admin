@@ -10,8 +10,9 @@ const path = require('path');
 const db = require('./db');
 const auth = require('./auth');
 const mailer = require('./mailer');
+const audit = require('./audit');
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3002;
 
 function obtenerIPCliente(req) {
   return req.headers['x-forwarded-for']?.split(',')[0].trim() ||
@@ -72,54 +73,100 @@ async function manejarAPI(req, res) {
   const getBody = () => new Promise(resolve => {
     let b = '';
     req.on('data', c => b += c);
-    req.on('end', () => resolve(JSON.parse(b || '{}')));
+    req.on('end', () => {
+      try {
+        resolve(JSON.parse(b || '{}'));
+      } catch (err) {
+        console.error('[BODY_ERROR] Fallo al parsear JSON:', err.message);
+        resolve({}); // Devolvemos objeto vacío para que las validaciones de negocio lo manejen
+      }
+    });
   });
 
-  async function validarTokenJefatura(req, res) {
-    const token = req.headers['authorization']?.replace('Bearer ', '');
+  const obtenerToken = () => req.headers['authorization']?.replace('Bearer ', '');
+
+  async function obtenerUsuarioAutenticado(req, res) {
+    const token = obtenerToken();
 
     if (!token) {
       res.writeHead(401);
       res.end(JSON.stringify({ success: false, mensaje: 'Token requerido' }));
-      return false;
+      return null;
     }
 
     const sesion = await auth.validarSesion(token);
-
     if (!sesion.valida) {
       res.writeHead(401);
       res.end(JSON.stringify({ success: false, mensaje: 'Sesión inválida o expirada' }));
-      return false;
+      return null;
     }
 
     const usuarioInfo = sesion.usuario || sesion.datos || {};
-    const idUsuario = usuarioInfo.id_Usuario || usuarioInfo.idUsuario || usuarioInfo.id;
+    const idUsuario = Number(usuarioInfo.id_Usuario || usuarioInfo.idUsuario || usuarioInfo.id);
 
     if (!idUsuario) {
       res.writeHead(401);
       res.end(JSON.stringify({ success: false, mensaje: 'No se pudo identificar al usuario de la sesión' }));
-      return false;
+      return null;
     }
 
-    const roles = await db.query(`
-      SELECT r.Nombre as Rol
-      FROM Usuarios u
-      JOIN Nombramientos n ON u.id_Personal = n.id_Personal
-      JOIN Roles r ON n.id_Rol = r.id_Rol
-      WHERE u.id_Usuario = ${Number(idUsuario)}
-    `);
-
-    const esJefatura = roles && roles.some(r =>
-      (r.Rol || '').toLowerCase().includes('jefatura')
+    const usuarioBD = await db.query(
+      `SELECT id_Usuario, id_Personal
+       FROM Usuarios
+       WHERE id_Usuario = @id_usuario`,
+      { id_usuario: idUsuario }
     );
+
+    if (!usuarioBD || usuarioBD.length === 0) {
+      res.writeHead(401);
+      res.end(JSON.stringify({ success: false, mensaje: 'Usuario de sesión no encontrado' }));
+      return null;
+    }
+
+    return {
+      token,
+      idUsuario,
+      idPersonal: Number(usuarioBD[0].id_Personal),
+      sesion
+    };
+  }
+
+  async function registrarAuditoriaSegura(evento) {
+    try {
+      const resultado = await audit.emitirEventoAuditoria(evento);
+      if (!resultado.ok) {
+        console.error('[AUDITORIA] Evento rechazado:', resultado.errores || 'error desconocido');
+      }
+    } catch (error) {
+      console.error('[AUDITORIA] Error registrando evento:', error.message);
+    }
+  }
+
+  async function validarTokenJefatura(req, res) {
+    const usuario = await obtenerUsuarioAutenticado(req, res);
+    if (!usuario) return null;
+
+    const roles = await db.query(
+      `SELECT r.Nombre as Rol
+       FROM Usuarios u
+       JOIN Nombramientos n ON u.id_Personal = n.id_Personal
+       JOIN Roles r ON n.id_Rol = r.id_Rol
+       WHERE u.id_Usuario = @id_usuario`,
+      { id_usuario: usuario.idUsuario }
+    );
+
+    const esJefatura = roles && roles.some(r => {
+      const rol = (r.Rol || '').toLowerCase();
+      return rol.includes('jefatura') || rol.includes('director');
+    });
 
     if (!esJefatura) {
       res.writeHead(403);
       res.end(JSON.stringify({ success: false, mensaje: 'No tiene permisos de jefatura' }));
-      return false;
+      return null;
     }
 
-    return true;
+    return usuario;
   }
 
   try {
@@ -141,12 +188,15 @@ async function manejarAPI(req, res) {
     }
 
     if (url === '/api/dashboard' && method === 'GET') {
+      const usuarioSesion = await obtenerUsuarioAutenticado(req, res);
+      if (!usuarioSesion) return;
+
       const userRes = await db.query(`
         SELECT p.Nombre, p.Apellido, s.saldo_Disponible as saldo_vacaciones
         FROM Personal p
         JOIN Saldos_Vacacionales s ON p.id_Personal = s.id_Personal
-        WHERE p.id_Personal = 1
-      `);
+        WHERE p.id_Personal = @id_personal
+      `, { id_personal: usuarioSesion.idPersonal });
 
       const usuario = userRes[0] || { saldo_vacaciones: 15 };
 
@@ -155,8 +205,8 @@ async function manejarAPI(req, res) {
         FROM Nombramientos n
         LEFT JOIN Roles r ON n.id_Rol = r.id_Rol
         LEFT JOIN Carreras c ON n.id_Carrera = c.id_Carrera
-        WHERE n.id_Personal = 1
-      `);
+        WHERE n.id_Personal = @id_personal
+      `, { id_personal: usuarioSesion.idPersonal });
 
       usuario.nombramientos = nombRes;
 
@@ -169,8 +219,8 @@ async function manejarAPI(req, res) {
           Motivo as motivo,
           Estado as estado
         FROM Solicitudes_Vacaciones
-        WHERE id_Personal = 1
-      `);
+        WHERE id_Personal = @id_personal
+      `, { id_personal: usuarioSesion.idPersonal });
 
       const feriados = await db.query(`
         SELECT CONVERT(varchar, fecha, 23) as fecha, descripcion
@@ -187,25 +237,57 @@ async function manejarAPI(req, res) {
     }
 
     if (url === '/api/solicitudes' && method === 'POST') {
-      const data = await getBody();
+      const usuarioSesion = await obtenerUsuarioAutenticado(req, res);
+      if (!usuarioSesion) return;
 
-      await db.query(`
+      const data = await getBody();
+      const diasSolicitados = Number(data.dias || 0);
+
+      if (!data.fInicio || !data.fFin || !diasSolicitados || diasSolicitados <= 0) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ success: false, mensaje: 'Datos de solicitud incompletos o inválidos' }));
+        return;
+      }
+
+      const insertRes = await db.query(`
         INSERT INTO Solicitudes_Vacaciones
         (id_Personal, fecha_Inicio, fecha_Fin, dias_Solicitados, Motivo, Estado)
         VALUES
-        (1, '${data.fInicio}', '${data.fFin}', ${data.dias}, '${data.motivo || 'Vacaciones'}', 'Pendiente')
-      `);
+        (@id_personal, @f_inicio, @f_fin, @dias, @motivo, 'Pendiente');
+        SELECT CAST(SCOPE_IDENTITY() AS INT) as id_solicitud;
+      `, {
+        id_personal: usuarioSesion.idPersonal,
+        f_inicio: data.fInicio,
+        f_fin: data.fFin,
+        dias: diasSolicitados,
+        motivo: data.motivo || 'Vacaciones'
+      });
+
+      const idSolicitud = insertRes[0]?.id_solicitud;
 
       await db.query(`
         UPDATE Saldos_Vacacionales
-        SET saldo_Disponible = saldo_Disponible - ${data.dias}
-        WHERE id_Personal = 1
-      `);
+        SET saldo_Disponible = saldo_Disponible - @dias
+        WHERE id_Personal = @id_personal
+      `, { dias: diasSolicitados, id_personal: usuarioSesion.idPersonal });
 
       await db.query(`
         INSERT INTO Movimientos_Saldo (id_Personal, Tipo_Movimiento, Dias, Motivo)
-        VALUES (1, 'Resta', ${data.dias}, 'Cobro automático por Solicitud de Vacaciones')
-      `);
+        VALUES (@id_personal, 'Resta', @dias, 'Cobro automático por Solicitud de Vacaciones')
+      `, { id_personal: usuarioSesion.idPersonal, dias: diasSolicitados });
+
+      await registrarAuditoriaSegura({
+        usuario_id: usuarioSesion.idUsuario,
+        tipo_accion: 'INSERT',
+        entidad_afectada: 'Solicitudes_Vacaciones',
+        registro_id: idSolicitud || 'sin_id',
+        ip_origen: obtenerIPCliente(req),
+        detalle_json: {
+          fecha_inicio: data.fInicio,
+          fecha_fin: data.fFin,
+          dias: diasSolicitados
+        }
+      });
 
       res.writeHead(200);
       res.end(JSON.stringify({ success: true }));
@@ -213,34 +295,90 @@ async function manejarAPI(req, res) {
     }
 
     if (url === '/api/cancelar' && method === 'POST') {
+      const usuarioSesion = await obtenerUsuarioAutenticado(req, res);
+      if (!usuarioSesion) return;
+
       const data = await getBody();
+      const idSolicitud = Number(data.id);
+
+      if (!idSolicitud) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ success: false, mensaje: 'ID de solicitud inválido' }));
+        return;
+      }
 
       const reqInfo = await db.query(`
-        SELECT dias_Solicitados
+        SELECT id_Personal, dias_Solicitados, Estado, CONVERT(varchar, fecha_Inicio, 23) AS fecha_Inicio
         FROM Solicitudes_Vacaciones
-        WHERE id_Solicitud = ${data.id}
-      `);
+        WHERE id_Solicitud = @id_solicitud
+      `, { id_solicitud: idSolicitud });
+
+      if (!reqInfo || reqInfo.length === 0) {
+        res.writeHead(404);
+        res.end(JSON.stringify({ success: false, mensaje: 'La solicitud no existe' }));
+        return;
+      }
+
+      const solicitud = reqInfo[0];
+      const estado = String(solicitud.Estado || '').trim();
+      const fechaInicio = new Date(`${solicitud.fecha_Inicio}T00:00:00`);
+      const hoy = new Date();
+      hoy.setHours(0, 0, 0, 0);
+
+      if (Number(solicitud.id_Personal) !== usuarioSesion.idPersonal) {
+        res.writeHead(403);
+        res.end(JSON.stringify({ success: false, mensaje: 'No puede cancelar solicitudes de otro colaborador' }));
+        return;
+      }
+
+      if (estado !== 'Pendiente' && estado !== 'Aprobada') {
+        res.writeHead(409);
+        res.end(JSON.stringify({ success: false, mensaje: 'Solo se pueden cancelar solicitudes en estado Pendiente o Aprobada' }));
+        return;
+      }
+
+      if (hoy >= fechaInicio) {
+        res.writeHead(409);
+        res.end(JSON.stringify({ success: false, mensaje: 'No se puede cancelar porque la fecha de inicio ya comenzó' }));
+        return;
+      }
+
+      const estadoRevision = estado.toLowerCase();
+      if (estadoRevision.includes('revision')) {
+        res.writeHead(409);
+        res.end(JSON.stringify({ success: false, mensaje: 'Existe un proceso de revisión activo que impide la cancelación' }));
+        return;
+      }
 
       if (reqInfo && reqInfo.length > 0) {
-        const diasADevolver = reqInfo[0].dias_Solicitados;
+        const diasADevolver = Number(reqInfo[0].dias_Solicitados || 0);
 
         await db.query(`
           UPDATE Saldos_Vacacionales
-          SET saldo_Disponible = saldo_Disponible + ${diasADevolver}
-          WHERE id_Personal = 1
-        `);
+          SET saldo_Disponible = saldo_Disponible + @dias
+          WHERE id_Personal = @id_personal
+        `, { dias: diasADevolver, id_personal: usuarioSesion.idPersonal });
 
         await db.query(`
           INSERT INTO Movimientos_Saldo (id_Personal, Tipo_Movimiento, Dias, Motivo)
-          VALUES (1, 'Suma', ${diasADevolver}, 'Reembolso por Anulación de Solicitud de Vacaciones')
-        `);
+          VALUES (@id_personal, 'Suma', @dias, 'Reembolso por Anulación de Solicitud de Vacaciones')
+        `, { id_personal: usuarioSesion.idPersonal, dias: diasADevolver });
       }
 
       await db.query(`
         UPDATE Solicitudes_Vacaciones
         SET Estado = 'Cancelada'
-        WHERE id_Solicitud = ${data.id}
-      `);
+        WHERE id_Solicitud = @id_solicitud
+      `, { id_solicitud: idSolicitud });
+
+      await registrarAuditoriaSegura({
+        usuario_id: usuarioSesion.idUsuario,
+        tipo_accion: 'UPDATE',
+        entidad_afectada: 'Solicitudes_Vacaciones',
+        registro_id: idSolicitud,
+        ip_origen: obtenerIPCliente(req),
+        detalle_json: { nuevo_estado: 'Cancelada' }
+      });
 
       res.writeHead(200);
       res.end(JSON.stringify({ success: true }));
@@ -248,7 +386,8 @@ async function manejarAPI(req, res) {
     }
 
     if (url === '/api/jefatura/dashboard' && method === 'GET') {
-      if (!(await validarTokenJefatura(req, res))) return;
+      const usuarioJefatura = await validarTokenJefatura(req, res);
+      if (!usuarioJefatura) return;
 
       const pendientesRes = await db.query(`
         SELECT COUNT(*) AS total
@@ -302,7 +441,8 @@ async function manejarAPI(req, res) {
     }
 
     if (url === '/api/jefatura/pendientes' && method === 'GET') {
-      if (!(await validarTokenJefatura(req, res))) return;
+      const usuarioJefatura = await validarTokenJefatura(req, res);
+      if (!usuarioJefatura) return;
 
       const solicitudesPendientes = await db.query(`
         SELECT
@@ -328,7 +468,8 @@ async function manejarAPI(req, res) {
     }
 
     if (url === '/api/jefatura/historial' && method === 'GET') {
-      if (!(await validarTokenJefatura(req, res))) return;
+      const usuarioJefatura = await validarTokenJefatura(req, res);
+      if (!usuarioJefatura) return;
 
       const historial = await db.query(`
         SELECT
@@ -354,7 +495,8 @@ async function manejarAPI(req, res) {
     }
 
     if (url === '/api/jefatura/calendario' && method === 'GET') {
-      if (!(await validarTokenJefatura(req, res))) return;
+      const usuarioJefatura = await validarTokenJefatura(req, res);
+      if (!usuarioJefatura) return;
 
       const ausencias = await db.query(`
         SELECT
@@ -380,7 +522,8 @@ async function manejarAPI(req, res) {
     }
 
     if (url === '/api/jefatura/conflictos' && method === 'GET') {
-      if (!(await validarTokenJefatura(req, res))) return;
+      const usuarioJefatura = await validarTokenJefatura(req, res);
+      if (!usuarioJefatura) return;
 
       const conflictos = await db.query(`
         SELECT
@@ -417,7 +560,8 @@ async function manejarAPI(req, res) {
     }
 
     if (url === '/api/jefatura/aprobar' && method === 'POST') {
-      if (!(await validarTokenJefatura(req, res))) return;
+      const usuarioJefatura = await validarTokenJefatura(req, res);
+      if (!usuarioJefatura) return;
 
       const data = await getBody();
 
@@ -433,8 +577,8 @@ async function manejarAPI(req, res) {
       const solicitud = await db.query(`
         SELECT id_Solicitud, Estado
         FROM Solicitudes_Vacaciones
-        WHERE id_Solicitud = ${Number(data.id)}
-      `);
+        WHERE id_Solicitud = @id_solicitud
+      `, { id_solicitud: Number(data.id) });
 
       if (!solicitud || solicitud.length === 0) {
         res.writeHead(404);
@@ -457,8 +601,17 @@ async function manejarAPI(req, res) {
       await db.query(`
         UPDATE Solicitudes_Vacaciones
         SET Estado = 'Aprobada'
-        WHERE id_Solicitud = ${Number(data.id)}
-      `);
+        WHERE id_Solicitud = @id_solicitud
+      `, { id_solicitud: Number(data.id) });
+
+      await registrarAuditoriaSegura({
+        usuario_id: usuarioJefatura.idUsuario,
+        tipo_accion: 'APPROVE',
+        entidad_afectada: 'Solicitudes_Vacaciones',
+        registro_id: Number(data.id),
+        ip_origen: obtenerIPCliente(req),
+        detalle_json: { nuevo_estado: 'Aprobada' }
+      });
 
       res.writeHead(200);
       res.end(JSON.stringify({
@@ -469,7 +622,8 @@ async function manejarAPI(req, res) {
     }
 
     if (url === '/api/jefatura/rechazar' && method === 'POST') {
-      if (!(await validarTokenJefatura(req, res))) return;
+      const usuarioJefatura = await validarTokenJefatura(req, res);
+      if (!usuarioJefatura) return;
 
       const data = await getBody();
 
@@ -485,8 +639,8 @@ async function manejarAPI(req, res) {
       const solicitud = await db.query(`
         SELECT id_Solicitud, Estado, dias_Solicitados, id_Personal
         FROM Solicitudes_Vacaciones
-        WHERE id_Solicitud = ${Number(data.id)}
-      `);
+        WHERE id_Solicitud = @id_solicitud
+      `, { id_solicitud: Number(data.id) });
 
       if (!solicitud || solicitud.length === 0) {
         res.writeHead(404);
@@ -511,20 +665,29 @@ async function manejarAPI(req, res) {
 
       await db.query(`
         UPDATE Saldos_Vacacionales
-        SET saldo_Disponible = saldo_Disponible + ${diasADevolver}
-        WHERE id_Personal = ${idPersonal}
-      `);
+        SET saldo_Disponible = saldo_Disponible + @dias
+        WHERE id_Personal = @id_personal
+      `, { dias: diasADevolver, id_personal: idPersonal });
 
       await db.query(`
         INSERT INTO Movimientos_Saldo (id_Personal, Tipo_Movimiento, Dias, Motivo)
-        VALUES (${idPersonal}, 'Suma', ${diasADevolver}, 'Reembolso por rechazo de solicitud de vacaciones')
-      `);
+        VALUES (@id_personal, 'Suma', @dias, 'Reembolso por rechazo de solicitud de vacaciones')
+      `, { id_personal: idPersonal, dias: diasADevolver });
 
       await db.query(`
         UPDATE Solicitudes_Vacaciones
         SET Estado = 'Rechazada'
-        WHERE id_Solicitud = ${Number(data.id)}
-      `);
+        WHERE id_Solicitud = @id_solicitud
+      `, { id_solicitud: Number(data.id) });
+
+      await registrarAuditoriaSegura({
+        usuario_id: usuarioJefatura.idUsuario,
+        tipo_accion: 'REJECT',
+        entidad_afectada: 'Solicitudes_Vacaciones',
+        registro_id: Number(data.id),
+        ip_origen: obtenerIPCliente(req),
+        detalle_json: { nuevo_estado: 'Rechazada' }
+      });
 
       res.writeHead(200);
       res.end(JSON.stringify({
@@ -590,6 +753,15 @@ async function manejarAPI(req, res) {
 
       const sesion = await auth.crearSesion(validacion.usuario.id_Usuario);
 
+      await registrarAuditoriaSegura({
+        usuario_id: validacion.usuario.id_Usuario,
+        tipo_accion: 'LOGIN',
+        entidad_afectada: 'Sesiones',
+        registro_id: (sesion.token || '').substring(0, 24),
+        ip_origen: ipCliente,
+        detalle_json: { resultado: 'exitoso' }
+      });
+
       res.writeHead(200);
       res.end(JSON.stringify({
         exito: true,
@@ -614,10 +786,66 @@ async function manejarAPI(req, res) {
         return;
       }
 
+      const sesionActiva = await auth.validarSesion(token);
       const resultado = await auth.cerrarSesion(token);
+
+      if (resultado.exito && sesionActiva.valida) {
+        await registrarAuditoriaSegura({
+          usuario_id: sesionActiva.usuario.id_Usuario,
+          tipo_accion: 'LOGOUT',
+          entidad_afectada: 'Sesiones',
+          registro_id: token.substring(0, 24),
+          ip_origen: obtenerIPCliente(req),
+          detalle_json: { resultado: 'cerrada' }
+        });
+      }
 
       res.writeHead(200);
       res.end(JSON.stringify(resultado));
+      return;
+    }
+
+    if (url === '/api/auditoria/acciones' && method === 'GET') {
+      const usuarioSesion = await obtenerUsuarioAutenticado(req, res);
+      if (!usuarioSesion) return;
+
+      const roles = await db.query(
+        `SELECT r.Nombre as Rol
+         FROM Usuarios u
+         JOIN Nombramientos n ON u.id_Personal = n.id_Personal
+         JOIN Roles r ON n.id_Rol = r.id_Rol
+         WHERE u.id_Usuario = @id_usuario`,
+        { id_usuario: usuarioSesion.idUsuario }
+      );
+
+      const puedeVerAuditoria = (roles || []).some(r => {
+        const rol = (r.Rol || '').toLowerCase();
+        return rol.includes('admin') || rol.includes('rrhh') || rol.includes('patrocinador') || rol.includes('jefatura');
+      });
+
+      if (!puedeVerAuditoria) {
+        res.writeHead(403);
+        res.end(JSON.stringify({ exito: false, mensaje: 'No tiene permisos para consultar auditoría de acciones' }));
+        return;
+      }
+
+      const eventos = await db.query(`
+        SELECT TOP 200
+          id_Auditoria,
+          id_Evento,
+          CONVERT(varchar, Fecha_Evento, 120) as timestamp,
+          usuario_id,
+          tipo_accion,
+          entidad_afectada,
+          registro_id,
+          ip_origen,
+          detalle_json
+        FROM Auditoria_Acciones
+        ORDER BY Fecha_Evento DESC, id_Auditoria DESC
+      `);
+
+      res.writeHead(200);
+      res.end(JSON.stringify({ exito: true, total: eventos.length, eventos }));
       return;
     }
 
@@ -788,7 +1016,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  const filePath = url === '/' ? '/index.html' : url;
+  const filePath = url === '/' ? '/login.html' : url;
   const fullPath = path.join(__dirname, 'public', filePath);
   servirArchivo(req, res, fullPath);
 });
@@ -796,11 +1024,12 @@ const server = http.createServer(async (req, res) => {
 async function iniciarServidor() {
   await db.probarConexion();
 
-  server.listen(PORT, () => {
+  const ACTIVE_PORT = process.env.PORT || 3002;
+  server.listen(ACTIVE_PORT, () => {
     console.log(`
 ╔════════════════════════════════════════════════════╗
 ║   Servidor iniciado                                ║
-║   http://localhost:${PORT}                          ║
+║   http://localhost:${ACTIVE_PORT}                   ║
 ║                                                    ║
 ║   📌 Autenticación                                 ║
 ║      POST   /api/login                             ║

@@ -47,7 +47,7 @@ async function validarCredenciales(username, password) {
 
     // 3. Buscar usuario en la BD
     const usuarios = await db.query(
-      `SELECT u.id_Usuario, u.id_Personal, u.username, u.Password, u.Estado, 
+      `SELECT u.id_Usuario, u.id_Personal, u.username, u.Password, u.Estado, u.Bloqueado, 
               p.Nombre, p.Apellido, p.Correo, r.Nombre as Rol
        FROM Usuarios u 
        JOIN Personal p ON u.id_Personal = p.id_Personal
@@ -70,7 +70,7 @@ async function validarCredenciales(username, password) {
     const usuario = usuarios[0];
 
     // 4. Verificar si el usuario está bloqueado
-    if (usuario.Estado === 'Bloqueado') {
+    if (usuario.Bloqueado === 1 || usuario.Bloqueado === true) {
       return { 
         valido: false, 
         mensaje: 'Cuenta bloqueada por múltiples intentos fallidos.',
@@ -236,7 +236,7 @@ async function cerrarSesion(token) {
 
     const resultado = await db.actualizar('Sesiones',
       { Activa: 0 },
-      'Token = @token',
+      'Token = @token AND Activa = 1',
       { token }
     );
 

@@ -1,5 +1,6 @@
 let solicitudesOriginales = [];
 let solicitudAAnular = null;
+const tokenSesion = localStorage.getItem('sesion_token');
 
 document.addEventListener('DOMContentLoaded', () => {
     cargarSolicitudes();
@@ -10,7 +11,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function cargarSolicitudes() {
     try {
-        const res = await fetch('/api/dashboard');
+        const res = await fetch('/api/dashboard', {
+            headers: {
+                'Authorization': `Bearer ${tokenSesion}`
+            }
+        });
         const data = await res.json();
 
         const usuario = data.usuario || {};
@@ -18,7 +23,7 @@ async function cargarSolicitudes() {
 
         solicitudesOriginales = solicitudes;
 
-        const nombre = `${usuario.Nombre || 'Geral'} ${usuario.Apellido || ''}`.trim();
+        const nombre = `${usuario.Nombre || 'Usuario'} ${usuario.Apellido || ''}`.trim();
         document.getElementById('user-name-display').textContent = nombre;
 
         const nombramientos = usuario.nombramientos || [];
@@ -209,7 +214,10 @@ async function confirmarCancelacion() {
     try {
         const res = await fetch('/api/cancelar', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${tokenSesion}`
+            },
             body: JSON.stringify({ id: solicitudAAnular })
         });
 

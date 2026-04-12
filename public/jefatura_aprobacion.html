@@ -706,7 +706,7 @@
 
       const rol = (usuario.rol || '').toLowerCase();
 
-      if (!rol.includes('jefatura')) {
+      if (!rol.includes('jefatura') && !rol.includes('director')) {
         window.location.href = '/dashboard.html';
         return;
       }

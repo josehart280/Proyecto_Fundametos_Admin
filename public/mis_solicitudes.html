@@ -43,7 +43,7 @@
                     <div id="user-name-display" style="font-weight: 700; color: #fff; font-size: 0.95rem;">Cargando...</div>
                     <div id="user-role-display" style="font-size: 0.70rem; color: var(--secondary-accent); font-weight: 600;">...</div>
                 </div>
-                <div id="user-avatar" class="avatar">G</div>
+                <div id="user-avatar" class="avatar">...</div>
             </div>
         </header>
 
@@ -169,7 +169,7 @@
         </div>
     </div>
 
-   <script src="js/mis-solicitudes.js"></script>
+   <script src="js/mis_solicitudes.js"></script>
    <script>
         (async function() {
             const token = localStorage.getItem('sesion_token');
@@ -181,11 +181,7 @@
             }
 
             const rol = (usuario.rol || '').toLowerCase();
-
-            if (rol.includes('jefatura')) {
-                window.location.href = '/jefatura_aprobacion.html';
-                return;
-            }
+            // El acceso para Jefaturas ahora está permitido
         })();
     </script>
 </body>

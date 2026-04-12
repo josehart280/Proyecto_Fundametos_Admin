@@ -139,7 +139,7 @@
                     const rol = (data.usuario?.rol || '').toLowerCase();
 
                     setTimeout(() => {
-                        if (rol.includes('jefatura')) {
+                        if (rol.includes('jefatura') || rol.includes('director')) {
                         window.location.href = '/jefatura_aprobacion.html';
                         } else {
                         window.location.href = '/dashboard.html';

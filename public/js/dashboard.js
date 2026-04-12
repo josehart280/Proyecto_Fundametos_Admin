@@ -4,6 +4,8 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
+    const tokenSesion = localStorage.getItem('sesion_token');
+
     const calendarElement = document.getElementById('calendar-render');
     const monthYearDisplay = document.getElementById('calendar-month-year');
     const requestsRender = document.getElementById('requests-render');
@@ -21,7 +23,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- CONEXIÓN AL BACKEND SQL (Producción) ---
     async function inicializarDashboardDesdeBD() {
         try {
-            const response = await fetch('/api/dashboard');
+            const response = await fetch('/api/dashboard', {
+                headers: {
+                    'Authorization': `Bearer ${tokenSesion}`
+                }
+            });
             const data = await response.json();
             
             // Llenar variables locales de UI con datos de SQL Server
@@ -35,15 +41,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 const roleNode = document.getElementById('user-role-display');
                 if(roleNode) roleNode.textContent = arrRoles.join(' | ');
                 
+                const fullName = `${data.usuario.Nombre} ${data.usuario.Apellido}`;
                 const nameNode = document.getElementById('user-name-display');
                 if(nameNode) nameNode.textContent = `${data.usuario.Nombre} ${data.usuario.Apellido.charAt(0)}.`;
 
+                const welcomeNode = document.getElementById('welcome-name');
+                if(welcomeNode) welcomeNode.textContent = data.usuario.Nombre;
 
+                const avatarNode = document.getElementById('user-avatar');
+                if(avatarNode) avatarNode.textContent = (data.usuario.Nombre.charAt(0) || 'U').toUpperCase();
             }
 
             // Actualizar Tarjeta "Saldo Disponible" del UI
-            const saldoCards = document.querySelectorAll('.stat-value');
-            if(saldoCards.length > 0) saldoCards[0].textContent = saldoOficial.toFixed(1);
+            const saldoCard = document.getElementById('saldo-disponible-value');
+            if(saldoCard) saldoCard.textContent = saldoOficial.toFixed(1);
 
             // Renderizar la UI final
             actualizarMetricas();
@@ -108,6 +119,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     await fetch('/api/cancelar', {
                         method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${tokenSesion}`
+                        },
                         body: JSON.stringify({ id: solicitudIdACancelar })
                     });
                     
