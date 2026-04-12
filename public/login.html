@@ -138,13 +138,16 @@
 
                     const rol = (data.usuario?.rol || '').toLowerCase();
 
-                    setTimeout(() => {
-                        if (rol.includes('jefatura')) {
+                    // ✅ CÓDIGO CORRECTO
+                setTimeout(() => {
+                    if (rol.includes('rrhh')) {
+                        window.location.href = '/rrhh_admin.html';
+                    } else if (rol.includes('jefatura')) {
                         window.location.href = '/jefatura_aprobacion.html';
-                        } else {
+                    } else {
                         window.location.href = '/dashboard.html';
-                        }
-                    }, 1500);
+                    }
+                }, 1500);
                 } else {
                     mostrarMensaje(data.mensaje || 'Error al iniciar sesión.', 'error');
                 }
