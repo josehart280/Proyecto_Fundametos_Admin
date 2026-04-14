@@ -219,20 +219,6 @@ Movimientos_Saldo (id_Movimiento, id_Personal, Tipo_Movimiento, Dias, Motivo, Fe
 | **Sebastian Andrade** | Administración (pendiente) | ⏳ 0/3 Por Iniciar |
 | **Jose Porras** | Auditoría (parcial) | 🔄 1/2 En Progreso |
 
-### 🏆 Tabla de Reconocimiento
-
-```
-┌─────────────────────────────────────────────────────────┐
-│  🥇 Geral      ████████████████████████████████  100%   │
-│     Dashboard + Solicitud + Diseño Glassmorphism        │
-├─────────────────────────────────────────────────────────┤
-│  🥇 Dencel     ████████████████████████████████  100% │
-│     Mis Solicitudes + Backend + Integración             │
-├─────────────────────────────────────────────────────────┤
-│  🥉 Karolayn   ████████████████████░░░░░░░░░░░░   50% │
-│     Cancelación ✅ | Calendario Equipo 🔄             │
-└─────────────────────────────────────────────────────────┘
-```
 
 ### 📋 Asignaciones Actuales
 
@@ -287,18 +273,6 @@ Movimientos_Saldo (id_Movimiento, id_Personal, Tipo_Movimiento, Dias, Motivo, Fe
 - [ ] Notificaciones por correo electrónico
 - [ ] Recuperación de contraseña
 
----
-
-## 🔒 Notas de Seguridad
-
-> **IMPORTANTE**: Este sistema está en desarrollo y tiene los siguientes problemas de seguridad conocidos:
-
-1. **Autenticación**: Actualmente todas las operaciones usan `id_Personal = 1` hardcodeado.
-2. **Validaciones**: Algunas validaciones solo existen en el frontend.
-
-**Ver archivo `CLAUDE.md` para guía de corrección de estos problemas.**
-
----
 
 ## Guía de Contribución
 
