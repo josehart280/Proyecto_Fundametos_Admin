@@ -28,7 +28,6 @@
             <a href="dashboard.html" class="nav-item">Dashboard</a>
             <a href="solicitud.html" class="nav-item active">Nueva Solicitud</a>
             <a href="mis_solicitudes.html" class="nav-item">Mis Solicitudes</a>
-            <a href="auditoria.html" class="nav-item" id="nav-auditoria" style="display:none;">Auditoría</a>
             <a href="#" class="nav-item">Ajustes</a>
         </nav>
     </aside>
@@ -110,21 +109,6 @@
             const rol = (usuario.rol || '').toLowerCase();
             // El acceso para Jefaturas ahora está permitido
         })();
-        })();
-    </script>
-    <script>
-        (async function() {
-            try {
-                const token = localStorage.getItem('sesion_token');
-                if (!token) return;
-                const res = await fetch('/api/dashboard', { headers: { 'Authorization': 'Bearer ' + token } });
-                if (!res.ok) return;
-                const data = await res.json();
-                const roles = (data.usuario?.nombramientos || []).map(n => (n.Rol || '').toLowerCase());
-                const puedeVer = roles.some(r => r.includes('admin') || r.includes('rrhh') || r.includes('patrocinador') || r.includes('jefatura') || r.includes('director'));
-                const nav = document.getElementById('nav-auditoria');
-                if (nav && puedeVer) nav.style.display = '';
-            } catch(e) {}
         })();
     </script>
 </body>

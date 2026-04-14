@@ -142,552 +142,6 @@ async function manejarAPI(req, res) {
     }
   }
 
-  // ── Helper: validar token RRHH ────────────────────────────────────────
-  async function validarTokenRRHH(req, res) {
-    const token = req.headers['authorization']?.replace('Bearer ', '');
-    if (!token) {
-      res.writeHead(401);
-      res.end(JSON.stringify({ success: false, mensaje: 'Token requerido' }));
-      return null;
-    }
-
-    const sesion = await auth.validarSesion(token);
-    if (!sesion.valida) {
-      res.writeHead(401);
-      res.end(JSON.stringify({ success: false, mensaje: 'Sesión inválida o expirada' }));
-      return null;
-    }
-
-    const usuarioInfo = sesion.usuario || sesion.datos || {};
-    const idUsuario = Number(usuarioInfo.id_Usuario || usuarioInfo.idUsuario || usuarioInfo.id || 0);
-
-    if (!idUsuario) {
-      res.writeHead(401);
-      res.end(JSON.stringify({ success: false, mensaje: 'No se pudo identificar al usuario' }));
-      return null;
-    }
-
-    const roles = await db.query(`
-      SELECT r.Nombre as Rol
-      FROM Usuarios u
-      JOIN Nombramientos n ON u.id_Personal = n.id_Personal
-      JOIN Roles r ON n.id_Rol = r.id_Rol
-      WHERE u.id_Usuario = @id_usuario
-    `, { id_usuario: idUsuario });
-
-    const esRRHH = roles && roles.some(r => (r.Rol || '').toLowerCase().includes('rrhh'));
-    if (!esRRHH) {
-      res.writeHead(403);
-      res.end(JSON.stringify({ success: false, mensaje: 'No tiene permisos de RRHH' }));
-      return null;
-    }
-
-    return idUsuario;
-  }
-
-  // ── Helper: registrar en log de auditoría RRHH ─────────────────────────
-  async function registrarLogRRHH(idUsuario, accion, detalle) {
-    try {
-      await db.query(`
-        INSERT INTO Log_Auditoria_Admin (id_Usuario, Accion, Detalle)
-        VALUES (@id_usuario, @accion, @detalle)
-      `, { id_usuario: Number(idUsuario), accion, detalle });
-    } catch (e) {
-      console.error('Error al registrar log RRHH:', e.message);
-    }
-  }
-
-  // ── PRF-ADM-01/02/03/04  MÓDULO ADMINISTRACIÓN RRHH ─────────────────────
-
-  // Estadísticas generales del módulo
-  if (url === '/api/rrhh/estadisticas' && method === 'GET') {
-    const idRRHH = await validarTokenRRHH(req, res);
-    if (!idRRHH) return;
-
-    const [activosRes, inactivosRes, sinCuentaRes, ajustesMesRes, logTotalRes] = await Promise.all([
-      db.query(`SELECT COUNT(*) AS total FROM Usuarios WHERE Estado = 'Activo'`),
-      db.query(`SELECT COUNT(*) AS total FROM Usuarios WHERE Estado = 'Inactivo'`),
-      db.query(`
-        SELECT COUNT(*) AS total FROM Personal p
-        WHERE NOT EXISTS (SELECT 1 FROM Usuarios u WHERE u.id_Personal = p.id_Personal AND u.Estado = 'Activo')
-      `),
-      db.query(`
-        SELECT COUNT(*) AS total FROM Movimientos_Saldo
-        WHERE MONTH(Fecha) = MONTH(GETDATE()) AND YEAR(Fecha) = YEAR(GETDATE())
-      `),
-      db.query(`SELECT COUNT(*) AS total FROM Log_Auditoria_Admin`),
-    ]);
-
-    res.writeHead(200);
-    res.end(JSON.stringify({
-      success: true,
-      estadisticas: {
-        activos:    activosRes[0]?.total   || 0,
-        inactivos:  inactivosRes[0]?.total || 0,
-        sinCuenta:  sinCuentaRes[0]?.total || 0,
-        ajustesMes: ajustesMesRes[0]?.total|| 0,
-        logTotal:   logTotalRes[0]?.total  || 0,
-      }
-    }));
-    return;
-  }
-
-  // Listado completo de usuarios
-  if (url === '/api/rrhh/usuarios' && method === 'GET') {
-    const idRRHH = await validarTokenRRHH(req, res);
-    if (!idRRHH) return;
-
-    const usuarios = await db.query(`
-      SELECT
-        u.id_Usuario                                    AS id,
-        u.username,
-        (ISNULL(p.Nombre,'') + ' ' + ISNULL(p.Apellido,'')) AS nombre,
-        r.Nombre                                        AS rol,
-        u.Estado                                        AS estado,
-        ISNULL(sv.saldo_Disponible, 0)                  AS saldo
-      FROM Usuarios u
-      INNER JOIN Personal p ON u.id_Personal = p.id_Personal
-      LEFT JOIN Nombramientos n ON u.id_Personal = n.id_Personal
-      LEFT JOIN Roles r ON n.id_Rol = r.id_Rol
-      LEFT JOIN Saldos_Vacacionales sv ON u.id_Personal = sv.id_Personal
-      ORDER BY u.id_Usuario DESC
-    `);
-
-    res.writeHead(200);
-    res.end(JSON.stringify({ success: true, usuarios }));
-    return;
-  }
-
-  // Usuarios activos (para select de ajuste de saldo)
-  if (url === '/api/rrhh/usuarios-activos' && method === 'GET') {
-    const idRRHH = await validarTokenRRHH(req, res);
-    if (!idRRHH) return;
-
-    const usuarios = await db.query(`
-      SELECT
-        u.id_Usuario AS id,
-        (ISNULL(p.Nombre,'') + ' ' + ISNULL(p.Apellido,'')) AS nombre,
-        ISNULL(sv.saldo_Disponible, 0) AS saldo
-      FROM Usuarios u
-      INNER JOIN Personal p ON u.id_Personal = p.id_Personal
-      LEFT JOIN Saldos_Vacacionales sv ON u.id_Personal = sv.id_Personal
-      WHERE u.Estado = 'Activo'
-      ORDER BY p.Nombre
-    `);
-
-    res.writeHead(200);
-    res.end(JSON.stringify({ success: true, usuarios }));
-    return;
-  }
-
-  // Empleados sin cuenta activa (para crear usuario)
-  if (url === '/api/rrhh/empleados-sin-cuenta' && method === 'GET') {
-    const idRRHH = await validarTokenRRHH(req, res);
-    if (!idRRHH) return;
-
-    const empleados = await db.query(`
-      SELECT p.id_Personal AS id,
-             (ISNULL(p.Nombre,'') + ' ' + ISNULL(p.Apellido,'')) AS nombre
-      FROM Personal p
-      WHERE NOT EXISTS (
-        SELECT 1 FROM Usuarios u WHERE u.id_Personal = p.id_Personal AND u.Estado = 'Activo'
-      )
-      ORDER BY p.Nombre
-    `);
-
-    res.writeHead(200);
-    res.end(JSON.stringify({ success: true, empleados }));
-    return;
-  }
-
-  // Crear usuario (PRF-ADM-01)
-  if (url === '/api/rrhh/crear-usuario' && method === 'POST') {
-    const idRRHH = await validarTokenRRHH(req, res);
-    if (!idRRHH) return;
-
-    const data = await getBody();
-    const { idEmpleado, rol, email, saldo } = data;
-
-    if (!idEmpleado || !rol || !email || saldo === undefined || saldo === null) {
-      res.writeHead(400);
-      res.end(JSON.stringify({ success: false, mensaje: 'Faltan datos requeridos.' }));
-      return;
-    }
-
-    if (!['Colaborador','Jefatura','RRHH'].includes(rol)) {
-      res.writeHead(400);
-      res.end(JSON.stringify({ success: false, mensaje: 'Rol inválido seleccionado.' }));
-      return;
-    }
-
-    if (Number(saldo) < 0) {
-      res.writeHead(400);
-      res.end(JSON.stringify({ success: false, mensaje: 'El saldo inicial debe ser un valor positivo.' }));
-      return;
-    }
-
-    // Verificar que empleado no tenga cuenta activa
-    const cuentaExistente = await db.query(`
-      SELECT id_Usuario FROM Usuarios
-      WHERE id_Personal = @id_personal AND Estado = 'Activo'
-    `, { id_personal: Number(idEmpleado) });
-
-    if (cuentaExistente && cuentaExistente.length > 0) {
-      res.writeHead(409);
-      res.end(JSON.stringify({ success: false, mensaje: 'El empleado ya posee una cuenta activa.' }));
-      return;
-    }
-
-    // Obtener datos del empleado para generar username
-    const personal = await db.query(`
-      SELECT id_Personal, Nombre, Apellido FROM Personal WHERE id_Personal = @id_personal
-    `, { id_personal: Number(idEmpleado) });
-
-    if (!personal || personal.length === 0) {
-      res.writeHead(404);
-      res.end(JSON.stringify({ success: false, mensaje: 'Empleado no encontrado.' }));
-      return;
-    }
-
-    const p = personal[0];
-    const baseUsername = (p.Nombre.charAt(0) + p.Apellido).toLowerCase().replace(/\s+/g,'') + p.id_Personal;
-    const tempPassword = 'Temp' + Math.random().toString(36).slice(2, 8).toUpperCase() + '!';
-
-    // Obtener id_Rol
-    const rolRes = await db.query(`SELECT id_Rol FROM Roles WHERE Nombre = @rol_nombre`, { rol_nombre: rol });
-    const idRol = rolRes?.[0]?.id_Rol;
-
-    // Insertar usuario
-    await db.query(`
-      INSERT INTO Usuarios (id_Personal, username, Password, Estado, Correo_Electronico, Intentos_Fallidos, Bloqueado)
-      VALUES (@id_personal, @username, @password, 'Activo', @email, 0, 0)
-    `, {
-      id_personal: Number(idEmpleado),
-      username: baseUsername,
-      password: tempPassword,
-      email: email
-    });
-
-    // Obtener el nuevo id
-    const nuevoUsuario = await db.query(`SELECT id_Usuario FROM Usuarios WHERE username = @username`, { username: baseUsername });
-    const idNuevoUsuario = nuevoUsuario?.[0]?.id_Usuario;
-
-    // Nombramiento (rol)
-    if (idRol && idNuevoUsuario) {
-      await db.query(`
-        INSERT INTO Nombramientos (id_Personal, id_Rol)
-        VALUES (@id_personal, @id_rol)
-      `, { id_personal: Number(idEmpleado), id_rol: Number(idRol) });
-    }
-
-    // Saldo vacacional inicial
-    const saldoExistente = await db.query(`
-      SELECT id_Personal FROM Saldos_Vacacionales WHERE id_Personal = @id_personal
-    `, { id_personal: Number(idEmpleado) });
-
-    if (saldoExistente && saldoExistente.length > 0) {
-      await db.query(`
-        UPDATE Saldos_Vacacionales SET saldo_Disponible = @saldo
-        WHERE id_Personal = @id_personal
-      `, { saldo: Number(saldo), id_personal: Number(idEmpleado) });
-    } else {
-      await db.query(`
-        INSERT INTO Saldos_Vacacionales (id_Personal, saldo_Disponible)
-        VALUES (@id_personal, @saldo)
-      `, { id_personal: Number(idEmpleado), saldo: Number(saldo) });
-    }
-
-    await registrarLogRRHH(idRRHH, 'crear_usuario',
-      `Creó usuario '${baseUsername}' (${rol}) para empleado ID ${idEmpleado} con saldo inicial ${saldo} días`);
-
-    res.writeHead(200);
-    res.end(JSON.stringify({
-      success: true,
-      mensaje: 'Usuario creado correctamente. Credenciales generadas.',
-      credenciales: { username: baseUsername, password: tempPassword, rol, saldo }
-    }));
-    return;
-  }
-
-  // Modificar usuario (PRF-ADM-01)
-  if (url === '/api/rrhh/modificar-usuario' && method === 'POST') {
-    const idRRHH = await validarTokenRRHH(req, res);
-    if (!idRRHH) return;
-
-    const data = await getBody();
-    const { id, rol, estado } = data;
-
-    if (!id) {
-      res.writeHead(400);
-      res.end(JSON.stringify({ success: false, mensaje: 'ID de usuario requerido.' }));
-      return;
-    }
-
-    if (rol && !['Colaborador','Jefatura','RRHH'].includes(rol)) {
-      res.writeHead(400);
-      res.end(JSON.stringify({ success: false, mensaje: 'Rol inválido seleccionado.' }));
-      return;
-    }
-
-    const usuarioActual = await db.query(`
-      SELECT u.id_Usuario, u.Estado, u.id_Personal, r.Nombre AS rol_actual
-      FROM Usuarios u
-      LEFT JOIN Nombramientos n ON u.id_Personal = n.id_Personal
-      LEFT JOIN Roles r ON n.id_Rol = r.id_Rol
-      WHERE u.id_Usuario = @id_usuario
-    `, { id_usuario: Number(id) });
-
-    if (!usuarioActual || usuarioActual.length === 0) {
-      res.writeHead(404);
-      res.end(JSON.stringify({ success: false, mensaje: 'Usuario no encontrado.' }));
-      return;
-    }
-
-    const ua = usuarioActual[0];
-
-    if (estado) {
-      await db.query(`UPDATE Usuarios SET Estado = @estado WHERE id_Usuario = @id_usuario`,
-        { estado, id_usuario: Number(id) });
-    }
-
-    if (rol && rol !== ua.rol_actual) {
-      const rolRes = await db.query(`SELECT id_Rol FROM Roles WHERE Nombre = @rol_nombre`, { rol_nombre: rol });
-      const idRol = rolRes?.[0]?.id_Rol;
-      if (idRol) {
-        await db.query(`DELETE FROM Nombramientos WHERE id_Personal = @id_personal`,
-          { id_personal: Number(ua.id_Personal) });
-        await db.query(`INSERT INTO Nombramientos (id_Personal, id_Rol) VALUES (@id_personal, @id_rol)`,
-          { id_personal: Number(ua.id_Personal), id_rol: Number(idRol) });
-      }
-    }
-
-    await registrarLogRRHH(idRRHH, 'modificar_usuario',
-      `Modificó usuario ID ${id}: estado=${estado || ua.Estado}, rol=${rol || ua.rol_actual}`);
-
-    res.writeHead(200);
-    res.end(JSON.stringify({ success: true, mensaje: 'Usuario modificado correctamente.' }));
-    return;
-  }
-
-  // Ajuste manual de saldo (PRF-ADM-04)
-  if (url === '/api/rrhh/ajuste-saldo' && method === 'POST') {
-    const idRRHH = await validarTokenRRHH(req, res);
-    if (!idRRHH) return;
-
-    const data = await getBody();
-    const { idColaborador, tipo, dias, motivo } = data;
-
-    if (!idColaborador) {
-      res.writeHead(400);
-      res.end(JSON.stringify({ success: false, mensaje: 'Colaborador requerido.' }));
-      return;
-    }
-
-    if (!dias || Number(dias) <= 0) {
-      res.writeHead(400);
-      res.end(JSON.stringify({ success: false, mensaje: 'La cantidad de días debe ser un valor positivo.' }));
-      return;
-    }
-
-    if (!motivo || String(motivo).trim() === '') {
-      res.writeHead(400);
-      res.end(JSON.stringify({ success: false, mensaje: 'El motivo del ajuste es obligatorio.' }));
-      return;
-    }
-
-    // Obtener usuario activo y su id_Personal + saldo actual
-    const usuarioRes = await db.query(`
-      SELECT u.id_Personal, sv.saldo_Disponible AS saldo
-      FROM Usuarios u
-      LEFT JOIN Saldos_Vacacionales sv ON u.id_Personal = sv.id_Personal
-      WHERE u.id_Usuario = @id_usuario AND u.Estado = 'Activo'
-    `, { id_usuario: Number(idColaborador) });
-
-    if (!usuarioRes || usuarioRes.length === 0) {
-      res.writeHead(404);
-      res.end(JSON.stringify({ success: false, mensaje: 'Colaborador no encontrado o inactivo.' }));
-      return;
-    }
-
-    const idPersonal  = usuarioRes[0].id_Personal;
-    const saldoActual = Number(usuarioRes[0].saldo || 0);
-    const diasNum     = Number(dias);
-
-    const esIncremento = (tipo || '').toLowerCase() === 'incremento';
-    const saldoNuevo   = esIncremento ? saldoActual + diasNum : saldoActual - diasNum;
-
-    if (!esIncremento && saldoNuevo < 0) {
-      res.writeHead(400);
-      res.end(JSON.stringify({ success: false, mensaje: 'El saldo resultante no puede ser negativo.' }));
-      return;
-    }
-
-    await db.query(`
-      UPDATE Saldos_Vacacionales
-      SET saldo_Disponible = @saldo_nuevo
-      WHERE id_Personal = @id_personal
-    `, { saldo_nuevo: saldoNuevo, id_personal: Number(idPersonal) });
-
-    await db.query(`
-      INSERT INTO Movimientos_Saldo (id_Personal, id_Usuario_RRHH, Tipo_Movimiento, Dias, Saldo_Anterior, Saldo_Nuevo, Motivo)
-      VALUES (@id_personal, @id_rrhh, @tipo, @dias, @saldo_anterior, @saldo_nuevo, @motivo)
-    `, {
-      id_personal: Number(idPersonal),
-      id_rrhh: Number(idRRHH),
-      tipo,
-      dias: diasNum,
-      saldo_anterior: saldoActual,
-      saldo_nuevo: saldoNuevo,
-      motivo: String(motivo)
-    });
-
-    await registrarLogRRHH(idRRHH, 'ajuste_saldo',
-      `${tipo} de ${diasNum} días al colaborador ID ${idColaborador}. Saldo: ${saldoActual} → ${saldoNuevo}. Motivo: ${motivo}`);
-
-    res.writeHead(200);
-    res.end(JSON.stringify({ success: true, mensaje: 'Saldo de vacaciones ajustado correctamente.' }));
-    return;
-  }
-
-  // Historial de ajustes
-  if (url === '/api/rrhh/ajustes' && method === 'GET') {
-    const idRRHH = await validarTokenRRHH(req, res);
-    if (!idRRHH) return;
-
-    const ajustes = await db.query(`
-      SELECT TOP 100
-        ms.Fecha                                                          AS fecha,
-        (ISNULL(pr.Nombre,'') + ' ' + ISNULL(pr.Apellido,''))            AS responsable,
-        (ISNULL(pc.Nombre,'') + ' ' + ISNULL(pc.Apellido,''))            AS colaborador,
-        ms.Tipo_Movimiento                                                AS tipo,
-        ms.Dias                                                           AS dias,
-        ms.Saldo_Anterior                                                 AS saldo_anterior,
-        ms.Saldo_Nuevo                                                    AS saldo_nuevo,
-        ms.Motivo                                                         AS motivo
-      FROM Movimientos_Saldo ms
-      LEFT JOIN Usuarios ur ON ms.id_Usuario_RRHH = ur.id_Usuario
-      LEFT JOIN Personal pr ON ur.id_Personal = pr.id_Personal
-      INNER JOIN Personal pc ON ms.id_Personal = pc.id_Personal
-      ORDER BY ms.Fecha DESC
-    `);
-
-    res.writeHead(200);
-    res.end(JSON.stringify({ success: true, ajustes }));
-    return;
-  }
-
-  // Leer políticas (PRF-ADM-02)
-  if (url === '/api/rrhh/politicas' && method === 'GET') {
-    const idRRHH = await validarTokenRRHH(req, res);
-    if (!idRRHH) return;
-
-    const rows = await db.query(`
-      SELECT TOP 1
-        max_dias_consecutivos, min_dias_antiguedad,
-        min_dias_entre_solicitudes, aviso_previo_dias
-      FROM Configuracion_Politicas
-      ORDER BY id_Config DESC
-    `);
-
-    const politicas = rows?.[0] || {};
-    res.writeHead(200);
-    res.end(JSON.stringify({ success: true, politicas }));
-    return;
-  }
-
-  // Guardar políticas (PRF-ADM-02)
-  if (url === '/api/rrhh/politicas' && method === 'POST') {
-    const idRRHH = await validarTokenRRHH(req, res);
-    if (!idRRHH) return;
-
-    const data = await getBody();
-    const { max_dias_consecutivos, min_dias_antiguedad, min_dias_entre_solicitudes, aviso_previo_dias } = data;
-
-    if ([max_dias_consecutivos, min_dias_antiguedad, min_dias_entre_solicitudes, aviso_previo_dias]
-        .some(v => v === undefined || isNaN(Number(v)) || Number(v) < 0)) {
-      res.writeHead(400);
-      res.end(JSON.stringify({ success: false, mensaje: 'Error: Los valores ingresados no son válidos.' }));
-      return;
-    }
-
-    await db.query(`
-      INSERT INTO Configuracion_Politicas
-        (max_dias_consecutivos, min_dias_antiguedad, min_dias_entre_solicitudes, aviso_previo_dias, id_Usuario_Modifico)
-      VALUES (@max_dias, @min_antiguedad, @min_entre, @aviso_previo, @id_rrhh)
-    `, {
-      max_dias: Number(max_dias_consecutivos),
-      min_antiguedad: Number(min_dias_antiguedad),
-      min_entre: Number(min_dias_entre_solicitudes),
-      aviso_previo: Number(aviso_previo_dias),
-      id_rrhh: Number(idRRHH)
-    });
-
-    await registrarLogRRHH(idRRHH, 'cambio_politica',
-      `Políticas actualizadas: max_dias=${max_dias_consecutivos}, min_antiguedad=${min_dias_antiguedad}, min_entre=${min_dias_entre_solicitudes}, aviso=${aviso_previo_dias}`);
-
-    res.writeHead(200);
-    res.end(JSON.stringify({ success: true, mensaje: 'Configuración actualizada correctamente.' }));
-    return;
-  }
-
-  // Reporte gerencial (PRF-ADM-03)
-  if (url.startsWith('/api/rrhh/reporte') && method === 'GET') {
-    const idRRHH = await validarTokenRRHH(req, res);
-    if (!idRRHH) return;
-
-    const params = new URL(req.url, 'http://localhost').searchParams;
-    const inicio = params.get('inicio');
-    const fin    = params.get('fin');
-    const tipo   = params.get('tipo') || 'departamento';
-
-    if (!inicio || !fin || inicio > fin) {
-      res.writeHead(400);
-      res.end(JSON.stringify({ success: false, mensaje: 'Rango de fechas inválido.' }));
-      return;
-    }
-
-    const filas = await db.query(`
-      SELECT
-        (ISNULL(p.Nombre,'') + ' ' + ISNULL(p.Apellido,''))  AS colaborador,
-        ISNULL(d.Nombre_Departamento, 'Sin departamento')     AS departamento,
-        CONVERT(varchar, sv.fecha_Inicio, 23)                 AS inicio,
-        CONVERT(varchar, sv.fecha_Fin, 23)                    AS fin,
-        sv.dias_Solicitados                                   AS dias,
-        sv.Estado                                             AS estado
-      FROM Solicitudes_Vacaciones sv
-      INNER JOIN Personal p ON sv.id_Personal = p.id_Personal
-      LEFT JOIN Departamentos d ON p.id_Departamento = d.id_Departamento
-      WHERE sv.fecha_Inicio >= @inicio AND sv.fecha_Fin <= @fin
-      ORDER BY ${tipo === 'empleado' ? 'p.Nombre' : 'd.Nombre_Departamento'}, sv.fecha_Inicio
-    `, { inicio, fin });
-
-    res.writeHead(200);
-    res.end(JSON.stringify({ success: true, filas: filas || [] }));
-    return;
-  }
-
-  // Log de auditoría RRHH (PRF-ADM-03)
-  if (url === '/api/rrhh/log' && method === 'GET') {
-    const idRRHH = await validarTokenRRHH(req, res);
-    if (!idRRHH) return;
-
-    const eventos = await db.query(`
-      SELECT TOP 200
-        l.Fecha                                               AS fecha,
-        ISNULL(u.username, 'Sistema')                        AS responsable,
-        l.Accion                                              AS accion,
-        l.Detalle                                             AS detalle
-      FROM Log_Auditoria_Admin l
-      LEFT JOIN Usuarios u ON l.id_Usuario = u.id_Usuario
-      ORDER BY l.Fecha DESC
-    `);
-
-    res.writeHead(200);
-    res.end(JSON.stringify({ success: true, eventos: eventos || [] }));
-    return;
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
   async function validarTokenJefatura(req, res) {
     const usuario = await obtenerUsuarioAutenticado(req, res);
     if (!usuario) return null;
@@ -714,7 +168,6 @@ async function manejarAPI(req, res) {
 
     return usuario;
   }
-
 
   try {
     if (url === '/api/test' && method === 'GET') {
@@ -1287,15 +740,6 @@ async function manejarAPI(req, res) {
       if (!validacion.valido) {
         await auth.registrarIntento(null, 'fallido', validacion.codigo, ipCliente);
 
-        await registrarAuditoriaSegura({
-          usuario_id: validacion.usuario?.id_Usuario || 0,
-          tipo_accion: 'LOGIN',
-          entidad_afectada: 'Sesiones',
-          registro_id: data.username || 'desconocido',
-          ip_origen: ipCliente,
-          detalle_json: { resultado: 'fallido', codigo: validacion.codigo }
-        });
-
         res.writeHead(401);
         res.end(JSON.stringify({
           exito: false,
@@ -1385,52 +829,23 @@ async function manejarAPI(req, res) {
         return;
       }
 
-      const params = new URL(req.url, 'http://localhost').searchParams;
-      const filtros = {
-        fechaDesde: params.get('fechaDesde') || undefined,
-        fechaHasta: params.get('fechaHasta') || undefined,
-        usuario_id: params.get('usuario_id') || undefined,
-        tipo_accion: params.get('tipo_accion') || undefined,
-        entidad_afectada: params.get('entidad_afectada') || undefined,
-        page: parseInt(params.get('page')) || 1,
-        limit: parseInt(params.get('limit')) || 50
-      };
-
-      const resultado = await audit.consultarEventos(filtros);
-
-      res.writeHead(200);
-      res.end(JSON.stringify({ exito: true, ...resultado }));
-      return;
-    }
-
-    if (url === '/api/auditoria/metricas' && method === 'GET') {
-      const usuarioSesion = await obtenerUsuarioAutenticado(req, res);
-      if (!usuarioSesion) return;
-
-      const roles = await db.query(
-        `SELECT r.Nombre as Rol
-         FROM Usuarios u
-         JOIN Nombramientos n ON u.id_Personal = n.id_Personal
-         JOIN Roles r ON n.id_Rol = r.id_Rol
-         WHERE u.id_Usuario = @id_usuario`,
-        { id_usuario: usuarioSesion.idUsuario }
-      );
-
-      const puedeVer = (roles || []).some(r => {
-        const rol = (r.Rol || '').toLowerCase();
-        return rol.includes('admin') || rol.includes('rrhh') || rol.includes('patrocinador') || rol.includes('jefatura');
-      });
-
-      if (!puedeVer) {
-        res.writeHead(403);
-        res.end(JSON.stringify({ exito: false, mensaje: 'No tiene permisos para ver métricas de auditoría' }));
-        return;
-      }
-
-      const metricas = await audit.getMetricas();
+      const eventos = await db.query(`
+        SELECT TOP 200
+          id_Auditoria,
+          id_Evento,
+          CONVERT(varchar, Fecha_Evento, 120) as timestamp,
+          usuario_id,
+          tipo_accion,
+          entidad_afectada,
+          registro_id,
+          ip_origen,
+          detalle_json
+        FROM Auditoria_Acciones
+        ORDER BY Fecha_Evento DESC, id_Auditoria DESC
+      `);
 
       res.writeHead(200);
-      res.end(JSON.stringify({ exito: true, metricas }));
+      res.end(JSON.stringify({ exito: true, total: eventos.length, eventos }));
       return;
     }
 
@@ -1466,15 +881,6 @@ async function manejarAPI(req, res) {
           tokenRecuperacion.token,
           auth.CONFIG.DURACION_TOKEN_RECUPERACION_MINUTOS
         );
-
-        await registrarAuditoriaSegura({
-          usuario_id: usuario.id_Usuario,
-          tipo_accion: 'UPDATE',
-          entidad_afectada: 'Recuperacion_Password',
-          registro_id: tokenRecuperacion.token.substring(0, 24),
-          ip_origen: obtenerIPCliente(req),
-          detalle_json: { correo: usuario.Correo, resultado: 'enviado' }
-        });
 
         const devReturn = {
           exito: true,
@@ -1538,17 +944,6 @@ async function manejarAPI(req, res) {
 
       const resultado = await auth.cambiarPasswordConToken(data.token, data.nueva_password);
 
-      if (resultado.exito) {
-        await registrarAuditoriaSegura({
-          usuario_id: resultado.id_Usuario || 0,
-          tipo_accion: 'UPDATE',
-          entidad_afectada: 'Usuarios',
-          registro_id: String(resultado.id_Usuario || '0'),
-          ip_origen: obtenerIPCliente(req),
-          detalle_json: { accion: 'cambio_password', resultado: 'exitoso' }
-        });
-      }
-
       res.writeHead(resultado.exito ? 200 : 400);
       res.end(JSON.stringify(resultado));
       return;
@@ -1556,49 +951,40 @@ async function manejarAPI(req, res) {
 
     if (url === '/api/auditar/intentos-acceso' && method === 'GET') {
       try {
-        const usuarioSesion = await obtenerUsuarioAutenticado(req, res);
-        if (!usuarioSesion) return;
+        const token = req.headers['authorization']?.replace('Bearer ', '') ||
+          new URL(`http://localhost${req.url}`, 'http://localhost').searchParams.get('token');
 
-        const roles = await db.query(
-          `SELECT r.Nombre as Rol
-           FROM Usuarios u
-           JOIN Nombramientos n ON u.id_Personal = n.id_Personal
-           JOIN Roles r ON n.id_Rol = r.id_Rol
-           WHERE u.id_Usuario = @id_usuario`,
-          { id_usuario: usuarioSesion.idUsuario }
-        );
-
-        const puedeVer = (roles || []).some(r => {
-          const rol = (r.Rol || '').toLowerCase();
-          return rol.includes('admin') || rol.includes('rrhh') || rol.includes('patrocinador') || rol.includes('jefatura');
-        });
-
-        if (!puedeVer) {
-          res.writeHead(403);
-          res.end(JSON.stringify({ exito: false, mensaje: 'No tiene permisos para consultar intentos de acceso' }));
+        if (!token) {
+          res.writeHead(401);
+          res.end(JSON.stringify({
+            exito: false,
+            mensaje: 'Token de sesión requerido para acceder a auditoría'
+          }));
           return;
         }
 
-        const params = new URL(req.url, 'http://localhost').searchParams;
-        const limit = parseInt(params.get('limit')) || 100;
-        const offset = (parseInt(params.get('page') || '1') - 1) * limit;
+        const validacion = await auth.validarSesion(token);
 
-        const intentos = await db.query(
-          `SELECT ia.id_Intento, ia.id_Usuario, CONVERT(varchar, ia.Fecha_Intento, 120) as Fecha_Intento,
-                  ia.Resultado, ia.Razon_Fallo, ia.IP_Cliente,
-                  ISNULL(p.Nombre, '') + ' ' + ISNULL(p.Apellido, '') as nombre_usuario
-           FROM Intentos_Acceso ia
-           LEFT JOIN Usuarios u ON ia.id_Usuario = u.id_Usuario
-           LEFT JOIN Personal p ON u.id_Personal = p.id_Personal
-           ORDER BY ia.Fecha_Intento DESC
-           OFFSET ${offset} ROWS FETCH NEXT ${limit} ROWS ONLY`
-        );
+        if (!validacion.valida) {
+          res.writeHead(401);
+          res.end(JSON.stringify({
+            exito: false,
+            mensaje: 'Sesión no válida o expirada'
+          }));
+          return;
+        }
+
+        const intentos = await db.query(`
+          SELECT TOP 100
+            id_Intento, id_Usuario, Fecha_Intento, Resultado, Razon_Fallo, IP_Cliente
+          FROM Intentos_Acceso
+          ORDER BY Fecha_Intento DESC
+        `);
 
         res.writeHead(200);
         res.end(JSON.stringify({
           exito: true,
           total: intentos.length,
-          page: parseInt(params.get('page') || '1'),
           intentos
         }));
         return;
