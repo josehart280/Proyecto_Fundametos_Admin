@@ -139,10 +139,12 @@
                     const rol = (data.usuario?.rol || '').toLowerCase();
 
                     setTimeout(() => {
-                        if (rol.includes('jefatura') || rol.includes('director')) {
-                        window.location.href = '/jefatura_aprobacion.html';
+                        if (rol.includes('rrhh')) {
+                            window.location.href = '/rrhh_admin.html';
+                        } else if (rol.includes('jefatura') || rol.includes('director')) {
+                            window.location.href = '/jefatura_aprobacion.html';
                         } else {
-                        window.location.href = '/dashboard.html';
+                            window.location.href = '/dashboard.html';
                         }
                     }, 1500);
                 } else {

@@ -58,16 +58,23 @@ async function validarCredenciales(username, password) {
     );
 
     if (!usuarios || usuarios.length === 0) {
-      // Registrar intento fallido (usuario no existe)
-      // La IP se pasará desde server.js
-      return { 
-        valido: false, 
+      return {
+        valido: false,
         mensaje: 'Credenciales incorrectas.',
         codigo: 'USUARIO_NO_EXISTE'
       };
     }
 
-    const usuario = usuarios[0];
+    // Si el usuario tiene múltiples roles (múltiples nombramientos),
+    // priorizar en orden: RRHH > Jefatura > cualquier otro
+    const PRIORIDAD_ROLES = ['rrhh', 'jefatura'];
+    let usuario = usuarios[0];
+    if (usuarios.length > 1) {
+      for (const prioridad of PRIORIDAD_ROLES) {
+        const encontrado = usuarios.find(u => (u.Rol || '').toLowerCase().includes(prioridad));
+        if (encontrado) { usuario = encontrado; break; }
+      }
+    }
 
     // 4. Verificar si el usuario está bloqueado
     if (usuario.Bloqueado === 1 || usuario.Bloqueado === true) {

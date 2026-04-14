@@ -15,21 +15,21 @@ Proyecto estudiantil desarrollado para la asignatura de **Fundamentos de Adminis
 
 ## Progreso del Proyecto
 
-### Estado General: 🟢 Funcional (90%)
+### Estado General: 🟢 Funcional (~95%)
 
 ```
-████████████████████████████████████████████░░░  90%
+██████████████████████████████████████████████░░  95%
 ```
 
 ### Progreso por Módulos
 
 | Módulo | Estado | Progreso | Responsable |
 |--------|--------|----------|-------------|
-| **🟢 Colaborador** | Funcional | `████████████████████████████░░` **95%** | Geral, Dencel, Karolayn |
-| **🟢 Autenticación** | Funcional | `████████████████████████████░░` **95%** | Josué, Geral |
-| **🟢 Jefatura/Aprobación** | Funcional | `████████████████████████████░░` **95%** | Dencel, Karolayn |
-| **🔴 Administración** | No iniciado | `░░░░░░░░░░░░░░░░░░░░░░░░░░░` **0%** | Sebastián |
-| **🟡 Auditoría** | Parcial | `████████░░░░░░░░░░░░░░░░░░░` **40%** | Jose |
+| **🟢 Colaborador** | Funcional | `██████████████████████████████░░` **95%** | Geral, Dencel, Karolayn |
+| **🟢 Autenticación** | Funcional | `██████████████████████████████░░` **95%** | Josué, Geral |
+| **🟢 Jefatura/Aprobación** | Funcional | `██████████████████████████████░░` **95%** | Dencel, Karolayn |
+| **🟢 Administración RRHH** | Funcional | `██████████████████████████████░░` **100%** | Sebastián (Andrade) |
+| **🟢 Auditoría** | Funcional | `██████████████████████████████░░` **100%** | Jose |
 
 ### Detalle de Funcionalidades
 
@@ -39,21 +39,22 @@ Proyecto estudiantil desarrollado para la asignatura de **Fundamentos de Adminis
 - [x] Mis Solicitudes (historial con filtros)
 - [x] Cancelación de solicitudes
 - [x] Módulo Jefatura/Aprobación (bandeja de entrada)
+- [x] Módulo Administración RRHH (gestión usuarios, ajuste saldo, políticas)
+- [x] Dashboard de auditoría con métricas, filtros y paginación
 - [x] APIs REST para gestión de vacaciones
 - [x] Diseño Glassmorphism
 - [x] Login y logout con tokens de sesión (8h)
 - [x] Recuperación de contraseña por email
 - [x] Auditoría de intentos de acceso
-- [x] Auditoría de acciones (audit.js)
-
-#### 🚧 En Desarrollo
-- [ ] Auditoría completa de acciones
+- [x] Auditoría completa de acciones (login/logout/aprobación/rechazo/movimientos)
+- [x] Redirección por rol (Colaborador → Dashboard, Jefatura → Aprobación, RRHH → Admin)
 
 #### 🔴 Pendientes
-- [ ] Corrección SQL Injection (CRÍTICO)
-- [ ] Módulo de Administración (RRHH)
-- [ ] Reportes exportables
-- [ ] Notificaciones por email
+- [ ] Corrección SQL Injection (CRÍTICO — prioridad alta)
+- [ ] Hash de contraseñas con bcrypt (CRÍTICO — prioridad alta)
+- [ ] Reportes exportables (PDF)
+- [ ] Notificaciones por email al cambiar estado de solicitud
+- [ ] Transacciones SQL para operaciones multi-paso
 
 ---
 
