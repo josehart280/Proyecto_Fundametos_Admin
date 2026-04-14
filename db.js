@@ -62,7 +62,8 @@ async function query(sqlQuery, params = []) {
 
   if (params && !Array.isArray(params)) {
     for (const key in params) {
-      request.input(key, params[key]);
+      const valor = params[key];
+      request.input(key, valor === undefined ? null : valor);
     }
   } else if (params && params.length > 0) {
     params.forEach((param, index) => {

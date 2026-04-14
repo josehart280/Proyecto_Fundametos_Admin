@@ -198,6 +198,7 @@ async function manejarAPI(req, res) {
   }
 
   // ── PRF-ADM-01/02/03/04  MÓDULO ADMINISTRACIÓN RRHH ─────────────────────
+  try {
 
   // Estadísticas generales del módulo
   if (url === '/api/rrhh/estadisticas' && method === 'GET') {
@@ -300,17 +301,17 @@ async function manejarAPI(req, res) {
     return;
   }
 
-  // Crear usuario (PRF-ADM-01)
+  // Crear usuario con información de personal integrada (PRF-ADM-01)
   if (url === '/api/rrhh/crear-usuario' && method === 'POST') {
     const idRRHH = await validarTokenRRHH(req, res);
     if (!idRRHH) return;
 
     const data = await getBody();
-    const { idEmpleado, rol, email, saldo } = data;
+    const { cedula, nombre, apellido, email, rol, saldo, password } = data;
 
-    if (!idEmpleado || !rol || !email || saldo === undefined || saldo === null) {
+    if (!cedula || !nombre || !apellido || !rol || !email || !password || saldo === undefined || saldo === null) {
       res.writeHead(400);
-      res.end(JSON.stringify({ success: false, mensaje: 'Faltan datos requeridos.' }));
+      res.end(JSON.stringify({ success: false, mensaje: 'Faltan datos requeridos (Cédula, Nombre, Apellido, Rol, Email, Saldo, Contraseña).' }));
       return;
     }
 
@@ -326,85 +327,90 @@ async function manejarAPI(req, res) {
       return;
     }
 
-    // Verificar que empleado no tenga cuenta activa
+    // 1. Gestionar el registro en Personal (Upsert por Cédula)
+    let idPersonal;
+    const personalExistente = await db.query(`
+      SELECT id_Personal FROM Personal WHERE Cedula = @cedula
+    `, { cedula });
+
+    if (personalExistente && personalExistente.length > 0) {
+      idPersonal = personalExistente[0].id_Personal;
+    } else {
+      await db.query(`
+        INSERT INTO Personal (Cedula, Nombre, Apellido, Correo, Estado)
+        VALUES (@cedula, @nombre, @apellido, @email, 'Activo')
+      `, { cedula, nombre, apellido, email });
+      
+      const nuevoPersonal = await db.query(`SELECT id_Personal FROM Personal WHERE Cedula = @cedula`, { cedula });
+      idPersonal = nuevoPersonal[0].id_Personal;
+    }
+
+    // 2. Verificar que el personal no tenga cuenta de usuario activa
     const cuentaExistente = await db.query(`
       SELECT id_Usuario FROM Usuarios
       WHERE id_Personal = @id_personal AND Estado = 'Activo'
-    `, { id_personal: Number(idEmpleado) });
+    `, { id_personal: idPersonal });
 
     if (cuentaExistente && cuentaExistente.length > 0) {
       res.writeHead(409);
-      res.end(JSON.stringify({ success: false, mensaje: 'El empleado ya posee una cuenta activa.' }));
+      res.end(JSON.stringify({ success: false, mensaje: 'Ya existe una cuenta de usuario activa para esta persona.' }));
       return;
     }
 
-    // Obtener datos del empleado para generar username
-    const personal = await db.query(`
-      SELECT id_Personal, Nombre, Apellido FROM Personal WHERE id_Personal = @id_personal
-    `, { id_personal: Number(idEmpleado) });
+    // 3. Generar usuario
+    const baseUsername = (nombre.charAt(0) + apellido).toLowerCase().replace(/\s+/g,'') + idPersonal;
 
-    if (!personal || personal.length === 0) {
-      res.writeHead(404);
-      res.end(JSON.stringify({ success: false, mensaje: 'Empleado no encontrado.' }));
-      return;
-    }
-
-    const p = personal[0];
-    const baseUsername = (p.Nombre.charAt(0) + p.Apellido).toLowerCase().replace(/\s+/g,'') + p.id_Personal;
-    const tempPassword = 'Temp' + Math.random().toString(36).slice(2, 8).toUpperCase() + '!';
-
-    // Obtener id_Rol
-    const rolRes = await db.query(`SELECT id_Rol FROM Roles WHERE Nombre = @rol_nombre`, { rol_nombre: rol });
+    // 4. Obtener id_Rol
+    const rolRes = await db.query(`SELECT id_Rol FROM Roles WHERE Nombre LIKE @rol_nombre + '%'`, { rol_nombre: rol });
     const idRol = rolRes?.[0]?.id_Rol;
 
-    // Insertar usuario
+    // 5. Insertar usuario
     await db.query(`
       INSERT INTO Usuarios (id_Personal, username, Password, Estado, Correo_Electronico, Intentos_Fallidos, Bloqueado)
       VALUES (@id_personal, @username, @password, 'Activo', @email, 0, 0)
     `, {
-      id_personal: Number(idEmpleado),
+      id_personal: idPersonal,
       username: baseUsername,
-      password: tempPassword,
+      password: password,
       email: email
     });
 
-    // Obtener el nuevo id
     const nuevoUsuario = await db.query(`SELECT id_Usuario FROM Usuarios WHERE username = @username`, { username: baseUsername });
     const idNuevoUsuario = nuevoUsuario?.[0]?.id_Usuario;
 
-    // Nombramiento (rol)
+    // 6. Nombramiento (rol)
     if (idRol && idNuevoUsuario) {
       await db.query(`
-        INSERT INTO Nombramientos (id_Personal, id_Rol)
-        VALUES (@id_personal, @id_rol)
-      `, { id_personal: Number(idEmpleado), id_rol: Number(idRol) });
+        INSERT INTO Nombramientos (id_Personal, id_Rol, Tipo_Nombramiento, Fecha_Ingreso, Fraccion_Tiempo, Estado)
+        VALUES (@id_personal, @id_rol, 'Propiedad', GETDATE(), 1.0, 'Activo')
+      `, { id_personal: idPersonal, id_rol: Number(idRol) });
     }
 
-    // Saldo vacacional inicial
+    // 7. Saldo vacacional inicial
     const saldoExistente = await db.query(`
       SELECT id_Personal FROM Saldos_Vacacionales WHERE id_Personal = @id_personal
-    `, { id_personal: Number(idEmpleado) });
+    `, { id_personal: idPersonal });
 
     if (saldoExistente && saldoExistente.length > 0) {
       await db.query(`
         UPDATE Saldos_Vacacionales SET saldo_Disponible = @saldo
         WHERE id_Personal = @id_personal
-      `, { saldo: Number(saldo), id_personal: Number(idEmpleado) });
+      `, { saldo: Number(saldo), id_personal: idPersonal });
     } else {
       await db.query(`
         INSERT INTO Saldos_Vacacionales (id_Personal, saldo_Disponible)
         VALUES (@id_personal, @saldo)
-      `, { id_personal: Number(idEmpleado), saldo: Number(saldo) });
+      `, { id_personal: idPersonal, saldo: Number(saldo) });
     }
 
     await registrarLogRRHH(idRRHH, 'crear_usuario',
-      `Creó usuario '${baseUsername}' (${rol}) para empleado ID ${idEmpleado} con saldo inicial ${saldo} días`);
+      `Registró personal '${nombre} ${apellido}' y cuenta '${baseUsername}' (${rol}) con saldo inicial ${saldo} días`);
 
     res.writeHead(200);
     res.end(JSON.stringify({
       success: true,
-      mensaje: 'Usuario creado correctamente. Credenciales generadas.',
-      credenciales: { username: baseUsername, password: tempPassword, rol, saldo }
+      mensaje: 'Empleado y usuario registrados correctamente.',
+      credenciales: { username: baseUsername, password: password, rol, saldo }
     }));
     return;
   }
@@ -716,7 +722,8 @@ async function manejarAPI(req, res) {
   }
 
 
-  try {
+
+
     if (url === '/api/test' && method === 'GET') {
       const conexionOk = await db.probarConexion();
       res.writeHead(200);

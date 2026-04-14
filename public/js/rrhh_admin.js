@@ -200,7 +200,6 @@ async function cargarEmpleadosSinCuenta() {
 
 function abrirModalCrearUsuario() {
   limpiarFormCrear();
-  cargarEmpleadosSinCuenta();
   showModal('modal-crear-usuario');
 }
 
@@ -209,24 +208,31 @@ function cerrarModalCrearUsuario() {
 }
 
 function limpiarFormCrear() {
-  ['crear-empleado','crear-rol','crear-email','crear-saldo'].forEach(id => setVal(id, ''));
+  ['crear-cedula','crear-nombre','crear-apellido','crear-rol','crear-email','crear-saldo','crear-password'].forEach(id => setVal(id, ''));
 }
 
 async function crearUsuario() {
-  const idEmpleado = getVal('crear-empleado');
-  const rol        = getVal('crear-rol');
-  const email      = getVal('crear-email');
-  const saldo      = parseFloat(getVal('crear-saldo'));
+  const cedula    = getVal('crear-cedula').trim();
+  const nombre    = getVal('crear-nombre').trim();
+  const apellido  = getVal('crear-apellido').trim();
+  const rol       = getVal('crear-rol');
+  const email     = getVal('crear-email');
+  const password  = getVal('crear-password');
+  const saldo     = parseFloat(getVal('crear-saldo'));
 
-  if (!idEmpleado) return alert('Selecciona un empleado.');
-  if (!rol)        return alert('Selecciona un rol.');
-  if (!email)      return alert('Ingresa un correo electrónico.');
+  if (!cedula)   return alert('Ingresa la cédula o DNI.');
+  if (!nombre)   return alert('Ingresa el nombre.');
+  if (!apellido)  return alert('Ingresa el apellido.');
+  if (!rol)       return alert('Selecciona un rol.');
+  if (!email)     return alert('Ingresa un correo electrónico.');
+  if (!password)  return alert('Ingresa una contraseña para el usuario.');
+  if (password.length < 6) return alert('La contraseña debe tener al menos 6 caracteres por seguridad.');
   if (isNaN(saldo) || saldo < 0) return alert('El saldo inicial debe ser un número positivo.');
 
   try {
     const data = await fetchConToken('/api/rrhh/crear-usuario', {
       method: 'POST',
-      body: JSON.stringify({ idEmpleado, rol, email, saldo }),
+      body: JSON.stringify({ cedula, nombre, apellido, rol, email, saldo, password }),
     });
 
     cerrarModalCrearUsuario();
@@ -300,9 +306,11 @@ async function cargarColaboradoresParaAjuste() {
     const data = await fetchConToken('/api/rrhh/usuarios-activos');
     const sel = document.getElementById('ajuste-colaborador');
     if (!sel) return;
+    const currentVal = sel.value;
     const lista = Array.isArray(data.usuarios) ? data.usuarios : [];
     sel.innerHTML = '<option value="">-- Seleccionar colaborador --</option>' +
-      lista.map(u => `<option value="${u.id}" data-saldo="${u.saldo}">${escapeHtml(u.nombre)}</option>`).join('');
+      lista.map(u => `<option value="${u.id}" data-saldo="${u.saldo}" ${u.id == currentVal ? 'selected' : ''}>${escapeHtml(u.nombre)}</option>`).join('');
+    if (currentVal) actualizarSaldoActual();
   } catch { /* silencioso */ }
 }
 

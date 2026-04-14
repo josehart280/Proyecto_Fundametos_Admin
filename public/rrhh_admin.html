@@ -521,30 +521,44 @@
   <!-- ==================== MODAL: Crear Usuario ==================== -->
   <div class="modal-backdrop" id="modal-crear-usuario">
     <div class="modal">
-      <h3>Crear nuevo usuario</h3>
+      <h3>Registrar nuevo colaborador y cuenta</h3>
       <p style="color:rgba(255,255,255,0.7);margin-top:0;margin-bottom:18px;font-size:0.93rem;">
-        Selecciona un empleado sin cuenta activa. El sistema generará las credenciales automáticamente.
+        Ingresa los datos personales del colaborador. El sistema creará su ficha de personal y generará las credenciales de acceso automáticamente.
       </p>
 
       <div class="form-grid">
         <div class="form-group">
-          <label>Empleado <span style="color:#fb7185">*</span></label>
-          <select id="crear-empleado">
-            <option value="">-- Seleccionar empleado --</option>
-          </select>
+          <label>Cédula / DNI <span style="color:#fb7185">*</span></label>
+          <input type="text" id="crear-cedula" placeholder="Ej: 1-1234-5678" />
+        </div>
+        <div class="form-group"></div> <!-- Espacio para mantener grid balanceado -->
+
+        <div class="form-group">
+          <label>Nombre(s) <span style="color:#fb7185">*</span></label>
+          <input type="text" id="crear-nombre" placeholder="Ej: Juan" />
         </div>
         <div class="form-group">
-          <label>Rol <span style="color:#fb7185">*</span></label>
+          <label>Apellido(s) <span style="color:#fb7185">*</span></label>
+          <input type="text" id="crear-apellido" placeholder="Ej: Pérez" />
+        </div>
+
+        <div class="form-group">
+          <label>Correo electrónico <span style="color:#fb7185">*</span></label>
+          <input type="email" id="crear-email" placeholder="usuario@empresa.com" />
+        </div>
+        <div class="form-group">
+          <label>Contraseña de acceso <span style="color:#fb7185">*</span></label>
+          <input type="password" id="crear-password" placeholder="Mínimo 8 caracteres" />
+        </div>
+
+        <div class="form-group">
+          <label>Rol asignado <span style="color:#fb7185">*</span></label>
           <select id="crear-rol">
             <option value="">-- Seleccionar rol --</option>
             <option value="Colaborador">Colaborador</option>
             <option value="Jefatura">Jefatura</option>
             <option value="RRHH">RRHH</option>
           </select>
-        </div>
-        <div class="form-group">
-          <label>Correo electrónico <span style="color:#fb7185">*</span></label>
-          <input type="email" id="crear-email" placeholder="usuario@empresa.com" />
         </div>
         <div class="form-group">
           <label>Saldo inicial de vacaciones (días) <span style="color:#fb7185">*</span></label>
