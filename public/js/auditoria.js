@@ -48,7 +48,7 @@ function construirNav() {
     ];
     nav.innerHTML = links.map(l =>
         `<a href="${l.href}" class="nav-item${l.active ? ' active' : ''}">${l.text}</a>`
-    ).join('');
+    ).join('') + `<a href="#" class="nav-item" onclick="cerrarSesion(); return false;" style="margin-top:auto; color:#ef4444;">Cerrar Sesión</a>`;
 }
 
 async function cargarMetricas() {
@@ -216,4 +216,15 @@ function escapeHtml(texto) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
+}
+
+function cerrarSesion() {
+    const token = localStorage.getItem('sesion_token');
+    if (token) {
+        fetch('/api/logout', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } }).catch(() => {});
+    }
+    localStorage.removeItem('sesion_token');
+    localStorage.removeItem('usuario_info');
+    window.location.href = '/login.html';
+}
 }

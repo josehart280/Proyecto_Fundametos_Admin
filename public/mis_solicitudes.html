@@ -24,6 +24,7 @@
             <a href="mis_solicitudes.html" class="nav-item active">Mis Solicitudes</a>
             <a href="auditoria.html" class="nav-item" id="nav-auditoria" style="display:none;">Auditoría</a>
             <a href="#" class="nav-item">Ajustes</a>
+            <a href="#" class="nav-item" onclick="cerrarSesion(); return false;" style="margin-top:auto; color:#ef4444;">Cerrar Sesión</a>
         </nav>
     </aside>
 
@@ -199,6 +200,17 @@
                 if (nav && puedeVer) nav.style.display = '';
             } catch(e) {}
         })();
+    </script>
+    <script>
+        function cerrarSesion() {
+            const token = localStorage.getItem('sesion_token');
+            if (token) {
+                fetch('/api/logout', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } }).catch(() => {});
+            }
+            localStorage.removeItem('sesion_token');
+            localStorage.removeItem('usuario_info');
+            window.location.href = '/login.html';
+        }
     </script>
 </body>
 </html>

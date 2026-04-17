@@ -3,130 +3,590 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Iniciar Sesión - Sistema de Vacaciones CUCR</title>
-    <link rel="stylesheet" href="/css/global.css">
-    <link rel="stylesheet" href="/css/auth.css">
-</head>
-<body class="auth-body">
-    <div class="auth-container">
-        <!-- Fondo decorativo -->
-        <div class="auth-background">
-            <div class="blob blob-1"></div>
-            <div class="blob blob-2"></div>
-            <div class="blob blob-3"></div>
-        </div>
+    <title>Iniciar Sesión - Sistema de Vacaciones CUC</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        <!-- Contenedor principal -->
-        <div class="auth-card">
-            <div class="auth-header">
-                <div class="logo">CUCR</div>
-                <h1>Sistema de Vacaciones</h1>
-                <p>Inicia sesión para continuar</p>
+        :root {
+            --cuc-blue: #003087;
+            --cuc-blue-light: #0047be;
+            --cuc-gold: #C8922A;
+            --cuc-gold-light: #e5aa40;
+            --text-dark: #1a1a2e;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --error: #dc2626;
+            --success: #16a34a;
+            --radius: 14px;
+            --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            min-height: 100vh;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            background: #f8fafc;
+            overflow: hidden;
+        }
+
+        /* ===== PANEL IZQUIERDO — CAMPUS ===== */
+        .panel-hero {
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+        }
+
+        .panel-hero__bg {
+            position: absolute;
+            inset: 0;
+            background-image: url('https://moria.aurens.com/organizations/497d3acf-35c0-4c90-8754-d5e71162119b/facilities/rvrfia-20211105161832.cuc-1.png');
+            background-size: cover;
+            background-position: center;
+            transform: scale(1.03);
+            transition: transform 8s ease-out;
+        }
+
+        .panel-hero__bg.loaded {
+            transform: scale(1);
+        }
+
+        .panel-hero__overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(
+                160deg,
+                rgba(0, 48, 135, 0.75) 0%,
+                rgba(0, 20, 60, 0.88) 60%,
+                rgba(0, 10, 30, 0.95) 100%
+            );
+        }
+
+        .panel-hero__content {
+            position: relative;
+            z-index: 2;
+            padding: 48px 52px;
+            color: #fff;
+        }
+
+        .hero-logo {
+            width: 72px;
+            height: 72px;
+            object-fit: contain;
+            margin-bottom: 24px;
+            filter: drop-shadow(0 4px 12px rgba(0,0,0,0.4));
+        }
+
+        .hero-tagline {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--cuc-gold-light);
+            margin-bottom: 12px;
+        }
+
+        .hero-title {
+            font-size: 32px;
+            font-weight: 700;
+            line-height: 1.2;
+            color: #fff;
+            margin-bottom: 14px;
+        }
+
+        .hero-desc {
+            font-size: 14px;
+            color: rgba(255,255,255,0.65);
+            line-height: 1.7;
+            max-width: 340px;
+        }
+
+        .hero-divider {
+            width: 48px;
+            height: 3px;
+            background: var(--cuc-gold);
+            border-radius: 2px;
+            margin: 20px 0;
+        }
+
+        /* ===== PANEL DERECHO — FORMULARIO ===== */
+        .panel-form {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 48px 56px;
+            background: #fff;
+            overflow-y: auto;
+        }
+
+        .form-wrapper {
+            width: 100%;
+            max-width: 380px;
+        }
+
+        .form-header {
+            text-align: center;
+            margin-bottom: 36px;
+        }
+
+        .form-header__logo {
+            width: 56px;
+            height: 56px;
+            object-fit: contain;
+            margin-bottom: 16px;
+        }
+
+        .form-header__institution {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 2.5px;
+            text-transform: uppercase;
+            color: var(--cuc-blue);
+            margin-bottom: 6px;
+        }
+
+        .form-header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-dark);
+            line-height: 1.3;
+            margin-bottom: 6px;
+        }
+
+        .form-header p {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        /* Separador con texto */
+        .form-separator {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 28px;
+        }
+
+        .form-separator::before,
+        .form-separator::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        .form-separator span {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-weight: 500;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        /* Grupos de input */
+        .field {
+            margin-bottom: 18px;
+        }
+
+        .field label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 7px;
+            letter-spacing: 0.3px;
+        }
+
+        .field__input-wrap {
+            position: relative;
+        }
+
+        .field input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 14px;
+            font-family: inherit;
+            color: var(--text-dark);
+            background: #fafafa;
+            transition: var(--transition);
+            outline: none;
+        }
+
+        .field input:focus {
+            border-color: var(--cuc-blue);
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(0, 48, 135, 0.08);
+        }
+
+        .field input::placeholder {
+            color: #b0bec5;
+            font-size: 13px;
+        }
+
+        .field--password input {
+            padding-right: 48px;
+        }
+
+        .toggle-pwd {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-muted);
+            font-size: 13px;
+            font-family: inherit;
+            font-weight: 500;
+            padding: 0;
+            transition: var(--transition);
+        }
+
+        .toggle-pwd:hover {
+            color: var(--cuc-blue);
+        }
+
+        /* Mensaje error/éxito */
+        .alert {
+            display: none;
+            padding: 11px 14px;
+            border-radius: 10px;
+            font-size: 13px;
+            line-height: 1.5;
+            margin-bottom: 16px;
+        }
+
+        .alert.error {
+            display: flex;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: var(--error);
+            gap: 8px;
+            align-items: flex-start;
+        }
+
+        .alert.exito {
+            display: flex;
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: var(--success);
+            gap: 8px;
+            align-items: flex-start;
+        }
+
+        .alert-icon {
+            flex-shrink: 0;
+            font-style: normal;
+        }
+
+        /* Botón principal */
+        .btn-login {
+            width: 100%;
+            padding: 13px 24px;
+            background: var(--cuc-blue);
+            border: none;
+            border-radius: var(--radius);
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: inherit;
+            letter-spacing: 0.3px;
+            cursor: pointer;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+
+        .btn-login::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(255,255,255,0);
+            transition: background 0.2s;
+        }
+
+        .btn-login:hover:not(:disabled)::after {
+            background: rgba(255,255,255,0.08);
+        }
+
+        .btn-login:hover:not(:disabled) {
+            background: var(--cuc-blue-light);
+            box-shadow: 0 6px 20px rgba(0, 48, 135, 0.35);
+            transform: translateY(-1px);
+        }
+
+        .btn-login:active:not(:disabled) {
+            transform: translateY(0);
+            box-shadow: none;
+        }
+
+        .btn-login:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+        }
+
+        .btn-login .loader {
+            display: none;
+        }
+
+        .btn-login.loading .btn-label {
+            display: none;
+        }
+
+        .btn-login.loading .loader {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Link recuperación */
+        .link-recovery {
+            display: block;
+            text-align: center;
+            font-size: 13px;
+            color: var(--cuc-blue);
+            text-decoration: none;
+            font-weight: 500;
+            padding: 6px 0;
+            transition: var(--transition);
+        }
+
+        .link-recovery:hover {
+            color: var(--cuc-blue-light);
+            text-decoration: underline;
+        }
+
+        /* Footer */
+        .form-footer {
+            text-align: center;
+            margin-top: 36px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+        }
+
+        .form-footer p {
+            font-size: 11px;
+            color: #b0bec5;
+            letter-spacing: 0.2px;
+        }
+
+        .form-footer strong {
+            color: var(--cuc-blue);
+            font-weight: 600;
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 900px) {
+            body {
+                grid-template-columns: 1fr;
+                overflow: auto;
+            }
+
+            .panel-hero {
+                min-height: 240px;
+                justify-content: flex-end;
+            }
+
+            .panel-hero__content {
+                padding: 28px 28px;
+            }
+
+            .hero-title {
+                font-size: 22px;
+            }
+
+            .hero-desc {
+                display: none;
+            }
+
+            .panel-form {
+                padding: 36px 28px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .panel-hero {
+                min-height: 180px;
+            }
+
+            .panel-form {
+                padding: 28px 20px;
+            }
+
+            .form-wrapper {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- PANEL IZQUIERDO: Campus CUC -->
+    <section class="panel-hero" aria-hidden="true">
+        <div class="panel-hero__bg" id="heroBg"></div>
+        <div class="panel-hero__overlay"></div>
+        <div class="panel-hero__content">
+            <img
+                src="https://moria.aurens.com/organizations/497d3acf-35c0-4c90-8754-d5e71162119b/logos/3215d7-271.png"
+                alt="Logo CUC"
+                class="hero-logo"
+                onerror="this.style.display='none'"
+            >
+            <p class="hero-tagline">Colegio Universitario de Cartago</p>
+            <h2 class="hero-title">Sistema de<br>Gestión de<br>Vacaciones</h2>
+            <div class="hero-divider"></div>
+            <p class="hero-desc">Plataforma institucional para la gestión, solicitud y aprobación de períodos vacacionales del personal.</p>
+        </div>
+    </section>
+
+    <!-- PANEL DERECHO: Formulario -->
+    <main class="panel-form">
+        <div class="form-wrapper">
+
+            <div class="form-header">
+                <img
+                    src="https://moria.aurens.com/organizations/497d3acf-35c0-4c90-8754-d5e71162119b/logos/3215d7-271.png"
+                    alt="Logo CUC"
+                    class="form-header__logo"
+                    onerror="this.style.display='none'"
+                >
+                <p class="form-header__institution">CUC — Cartago</p>
+                <h1>Iniciar sesión</h1>
+                <p>Ingresa tus credenciales institucionales</p>
             </div>
 
-            <form id="loginForm" class="auth-form">
-                <!-- Username / Identificador -->
-                <div class="form-group">
+            <div class="form-separator">
+                <span>Acceso al sistema</span>
+            </div>
+
+            <form id="loginForm" novalidate>
+
+                <div class="field">
                     <label for="username">Identificador</label>
-                    <input 
-                        type="text" 
-                        id="username" 
-                        name="username" 
-                        placeholder="Tu usuario o cédula"
-                        required
-                        minlength="3"
-                    >
-                    <span class="input-icon"></span>
+                    <div class="field__input-wrap">
+                        <input
+                            type="text"
+                            id="username"
+                            name="username"
+                            placeholder="Usuario o cédula"
+                            required
+                            minlength="3"
+                            autocomplete="username"
+                        >
+                    </div>
                 </div>
 
-                <!-- Password -->
-                <div class="form-group">
+                <div class="field field--password">
                     <label for="password">Contraseña</label>
-                    <input 
-                        type="password" 
-                        id="password" 
-                        name="password" 
-                        placeholder="Tu contraseña"
-                        required
-                    >
-                    <span class="input-icon"></span>
-                    <button type="button" class="toggle-password" id="togglePassword">
-                        Ver
-                    </button>
+                    <div class="field__input-wrap">
+                        <input
+                            type="password"
+                            id="password"
+                            name="password"
+                            placeholder="Tu contraseña"
+                            required
+                            autocomplete="current-password"
+                        >
+                        <button type="button" class="toggle-pwd" id="togglePwd" aria-label="Mostrar contraseña">Ver</button>
+                    </div>
                 </div>
 
-                <!-- Mensajes de error/éxito -->
-                <div id="mensaje" class="mensaje"></div>
+                <div id="mensaje" class="alert" role="alert"></div>
 
-                <!-- Botón Login -->
-                <button type="submit" class="btn-primary btn-login">
-                    <span class="btn-text">Iniciar Sesión</span>
-                    <span class="btn-loader" style="display: none;">Cargando...</span>
+                <button type="submit" class="btn-login" id="btnLogin">
+                    <span class="btn-label">Iniciar sesión</span>
+                    <span class="loader">
+                        <span class="spinner"></span>
+                        Verificando...
+                    </span>
                 </button>
+
+                <a href="/recuperar-password.html" class="link-recovery">¿Olvidaste tu contraseña?</a>
+
             </form>
 
-            <!-- Opciones adicionales -->
-            <div class="auth-options">
-                <a href="/recuperar-password.html" class="link-recovery">
-                    ¿Olvidaste tu contraseña?
-                </a>
-            </div>
-
-            <!-- Pie de página -->
-            <div class="auth-footer">
-                <p>Colegio Universitario de Cartago © 2026</p>
+            <div class="form-footer">
+                <p><strong>CUC</strong> · Colegio Universitario de Cartago · © 2026</p>
             </div>
         </div>
-    </div>
+    </main>
 
     <script>
-        const form = document.getElementById('loginForm');
-        const usernameInput = document.getElementById('username');
-        const passwordInput = document.getElementById('password');
-        const togglePasswordBtn = document.getElementById('togglePassword');
-        const mensajeDiv = document.getElementById('mensaje');
-        const btnLogin = form.querySelector('.btn-primary');
-        const btnText = btnLogin.querySelector('.btn-text');
-        const btnLoader = btnLogin.querySelector('.btn-loader');
+        // Imagen fondo con efecto de entrada
+        const bg = document.getElementById('heroBg');
+        const img = new Image();
+        img.onload = () => bg.classList.add('loaded');
+        img.src = bg.style.backgroundImage.replace(/url\(['"]?(.*?)['"]?\)/, '$1') ||
+            'https://moria.aurens.com/organizations/497d3acf-35c0-4c90-8754-d5e71162119b/facilities/rvrfia-20211105161832.cuc-1.png';
 
-        // Toggle mostrar/ocultar contraseña
-        togglePasswordBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            const tipo = passwordInput.type === 'password' ? 'text' : 'password';
-            passwordInput.type = tipo;
-            togglePasswordBtn.textContent = tipo === 'password' ? 'Ver' : 'Ocultar';
+        // Toggle password
+        const pwdInput = document.getElementById('password');
+        const togglePwd = document.getElementById('togglePwd');
+        togglePwd.addEventListener('click', () => {
+            const show = pwdInput.type === 'password';
+            pwdInput.type = show ? 'text' : 'password';
+            togglePwd.textContent = show ? 'Ocultar' : 'Ver';
         });
 
-        // Manejar envío del formulario
+        // Mostrar mensaje
+        const mensajeDiv = document.getElementById('mensaje');
+        function mostrarMensaje(texto, tipo) {
+            mensajeDiv.className = `alert ${tipo}`;
+            const icono = tipo === 'exito' ? '✓' : '!';
+            mensajeDiv.innerHTML = `<i class="alert-icon">${icono}</i><span>${texto}</span>`;
+        }
+
+        // Submit
+        const form = document.getElementById('loginForm');
+        const btnLogin = document.getElementById('btnLogin');
+        const usernameInput = document.getElementById('username');
+
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            // Validaciones básicas
-            if (!usernameInput.value.trim() || !passwordInput.value.trim()) {
-                mostrarMensaje('Debe ingresar sus credenciales.', 'error');
+            if (!usernameInput.value.trim() || !pwdInput.value.trim()) {
+                mostrarMensaje('Ingresa tu identificador y contraseña.', 'error');
+                return;
+            }
+            if (usernameInput.value.trim().length < 3) {
+                mostrarMensaje('Identificador inválido.', 'error');
                 return;
             }
 
-            if (usernameInput.value.length < 3) {
-                mostrarMensaje('Formato de identificador inválido.', 'error');
-                return;
-            }
-
-            // Estado de loading
             btnLogin.disabled = true;
-            btnText.style.display = 'none';
-            btnLoader.style.display = 'inline';
-            mensajeDiv.innerHTML = '';
+            btnLogin.classList.add('loading');
+            mensajeDiv.className = 'alert';
 
             try {
                 const response = await fetch('/api/login', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         username: usernameInput.value.trim(),
-                        password: passwordInput.value
+                        password: pwdInput.value
                     })
                 });
 
@@ -135,9 +595,9 @@
                 if (data.exito) {
                     localStorage.setItem('sesion_token', data.token);
                     localStorage.setItem('usuario_info', JSON.stringify(data.usuario));
+                    mostrarMensaje('Acceso autorizado. Redirigiendo...', 'exito');
 
                     const rol = (data.usuario?.rol || '').toLowerCase();
-
                     setTimeout(() => {
                         if (rol.includes('rrhh')) {
                             window.location.href = '/rrhh_admin.html';
@@ -146,30 +606,17 @@
                         } else {
                             window.location.href = '/dashboard.html';
                         }
-                    }, 1500);
+                    }, 1200);
                 } else {
-                    mostrarMensaje(data.mensaje || 'Error al iniciar sesión.', 'error');
+                    mostrarMensaje(data.mensaje || 'Credenciales incorrectas.', 'error');
                 }
-            } catch (error) {
-                console.error('Error:', error);
+            } catch {
                 mostrarMensaje('Error de conexión con el servidor.', 'error');
             } finally {
                 btnLogin.disabled = false;
-                btnText.style.display = 'inline';
-                btnLoader.style.display = 'none';
+                btnLogin.classList.remove('loading');
             }
         });
-
-        // Función auxiliar para mostrar mensajes
-        function mostrarMensaje(texto, tipo) {
-            mensajeDiv.className = `mensaje ${tipo}`;
-            mensajeDiv.innerHTML = `
-                <div class="mensaje-contenido">
-                    <span class="mensaje-icono">${tipo === 'exito' ? '[Éxito]' : '[Error]'}</span>
-                    <span class="mensaje-texto">${texto}</span>
-                </div>
-            `;
-        }
     </script>
 </body>
 </html>
