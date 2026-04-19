@@ -1,79 +1,71 @@
-#  Sistema de Vacaciones CUC
+# Sistema de Vacaciones CUC
 
 **Sistema de Gestión de Vacaciones para el Colegio Universitario de Cartago (CUC)**
 
 [![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
 [![SQL Server](https://img.shields.io/badge/SQL%20Server-2016+-blue.svg)](https://www.microsoft.com/sql-server)
-[![Estado](https://img.shields.io/badge/Estado-En%20Desarrollo-yellow.svg)]()
+[![Estado](https://img.shields.io/badge/Estado-Completado-brightgreen.svg)]()
 [![Glassmorphism](https://img.shields.io/badge/Diseño-Glassmorphism-purple.svg)]()
 
 Proyecto estudiantil desarrollado para la asignatura de **Fundamentos de Administración de Proyectos** - Carrera de Administración de Sistemas Informáticos.
 
-[📊 Progreso](#-progreso-del-proyecto) • [🚀 Instalación](#-instalación-rápida) • [📚 Documentación](#-documentación-adicional)
-
 ---
 
-## Progreso del Proyecto
+## Estado del Proyecto
 
-### Estado General: 🟢 Funcional (~95%)
+### Estado General: ✅ Completado (100%)
 
 ```
-██████████████████████████████████████████████░░  95%
+██████████████████████████████████████████████  100%
 ```
 
 ### Progreso por Módulos
 
 | Módulo | Estado | Progreso | Responsable |
 |--------|--------|----------|-------------|
-| **🟢 Colaborador** | Funcional | `██████████████████████████████░░` **95%** | Geral, Dencel, Karolayn |
-| **🟢 Autenticación** | Funcional | `██████████████████████████████░░` **95%** | Josué, Geral |
-| **🟢 Jefatura/Aprobación** | Funcional | `██████████████████████████████░░` **95%** | Dencel, Karolayn |
-| **🟢 Administración RRHH** | Funcional | `██████████████████████████████░░` **100%** | Sebastián (Andrade) |
-| **🟢 Auditoría** | Funcional | `██████████████████████████████░░` **100%** | Jose |
-
-### Detalle de Funcionalidades
-
-#### ✅ Completadas
-- [x] Dashboard con calendario interactivo
-- [x] Solicitud de vacaciones con validaciones
-- [x] Mis Solicitudes (historial con filtros)
-- [x] Cancelación de solicitudes
-- [x] Módulo Jefatura/Aprobación (bandeja de entrada)
-- [x] Módulo Administración RRHH (gestión usuarios, ajuste saldo, políticas)
-- [x] Dashboard de auditoría con métricas, filtros y paginación
-- [x] APIs REST para gestión de vacaciones
-- [x] Diseño Glassmorphism
-- [x] Login y logout con tokens de sesión (8h)
-- [x] Recuperación de contraseña por email
-- [x] Auditoría de intentos de acceso
-- [x] Auditoría completa de acciones (login/logout/aprobación/rechazo/movimientos)
-- [x] Redirección por rol (Colaborador → Dashboard, Jefatura → Aprobación, RRHH → Admin)
-
-#### 🔴 Pendientes
-- [ ] Corrección SQL Injection (CRÍTICO — prioridad alta)
-- [ ] Hash de contraseñas con bcrypt (CRÍTICO — prioridad alta)
-- [ ] Reportes exportables (PDF)
-- [ ] Notificaciones por email al cambiar estado de solicitud
-- [ ] Transacciones SQL para operaciones multi-paso
-
----
-
-## Descripción del Proyecto
-
-Sistema web para la gestión automatizada de solicitudes de vacaciones de colaboradores del CUCR. Permite a los empleados consultar su saldo disponible, realizar solicitudes de vacaciones, dar seguimiento a trámites, y a las jefaturas gestionar las aprobaciones.
+| **Autenticación** (PRF-AUT) | ✅ Completado | `███████████████████████████████` **100%** | Josué, Geral |
+| **Colaborador** (PRF-COL) | ✅ Completado | `███████████████████████████████` **100%** | Geral, Dencel, Karolayn |
+| **Aprobación** (PRF-APR) | ✅ Completado | `███████████████████████████████` **100%** | Dencel, Karolayn |
+| **Administración** (PRF-ADM) | ✅ Completado | `███████████████████████████████` **100%** | Sebastián (Andrade) |
+| **Auditoría** (PRF-AUD) | ✅ Completado | `███████████████████████████████` **100%** | Jose |
 
 ### Funcionalidades Implementadas
 
 #### Módulo Colaborador
-- 📊 **Dashboard** - Visualización de saldo disponible, días en proceso y días consumidos
-- 📝 **Solicitud de Vacaciones** - Formulario con calendario interactivo y cálculo automático de días hábiles
-- 📋 **Mis Solicitudes** - Historial completo con filtros por estado, búsqueda y resumen estadístico
-- ❌ **Cancelación** - Posibilidad de cancelar solicitudes pendientes o aprobadas (antes de la fecha inicio)
+- Dashboard con saldo disponible, días en proceso y días consumidos
+- Solicitud de vacaciones con calendario interactivo y cálculo automático de días hábiles
+- Mis Solicitudes - Historial completo con filtros por estado y búsqueda
+- Cancelación de solicitudes pendientes o aprobadas
+
+#### Módulo Jefatura/Aprobación
+- Bandeja de entrada con solicitudes pendientes
+- Aprobación y rechazo de solicitudes
+- Historial de solicitudes procesadas
+- Métricas del equipo
+
+#### Módulo Administración RRHH
+- Gestión de usuarios (crear, modificar)
+- Ajuste de saldo vacacional
+- Configuración de políticas
+- Reportes y logs de auditoría
+
+#### Módulo Autenticación
+- Login con tokens de sesión (8h de expiry)
+- Logout con invalidación de token
+- Recuperación de contraseña por email
+- Bloqueo de cuenta tras 3 intentos fallidos
+- Auditoría de intentos de acceso
+
+#### Módulo Auditoría
+- Registro de todas las acciones del sistema
+- Logueo de login/logout/aprobación/rechazo/movimientos
+- Dashboard con métricas, filtros y paginación
 
 #### Características Técnicas
-- 📅 **Calendario Interactivo** - Visualización de vacaciones programadas y feriados institucionales
-- 🔒 **Cálculo Inteligente** - Excluye fines de semana y feriados del cómputo de días
-- 📱 **Responsive** - Adaptable a dispositivos móviles y tablets
+- Calendario interactivo con feriados institucionales
+- Cálculo inteligente de días hábiles (excluye fines de semana y feriados)
+- Diseño Glassmorphism responsive
+- Redirección por rol al iniciar sesión
 
 ---
 
@@ -103,7 +95,7 @@ cp .env.example .env
 npm start
 ```
 
-El servidor iniciará en `http://localhost:3001` (o el puerto configurado en .env)
+El servidor iniciará en `http://localhost:3001`
 
 ---
 
@@ -112,48 +104,46 @@ El servidor iniciará en `http://localhost:3001` (o el puerto configurado en .en
 Crea un archivo `.env` en la raíz del proyecto con las siguientes variables:
 
 ```env
-# Configuración de Base de Datos
 DB_HOST=localhost
 DB_USER=sa
 DB_PASSWORD=tu_contraseña
 DB_NAME=VacacionesCUCR
-
-# Configuración del Servidor
 PORT=3001
-JWT_SECRET=tu_clave_secreta_para_jwt
+JWT_SECRET=tu_clave_secreta
 ```
 
-> **IMPORTANTE**: El archivo `.env` contiene credenciales sensibles y está incluido en `.gitignore`. Nunca lo suban al repositorio.
+> **IMPORTANTE**: El archivo `.env` contiene credenciales sensibles y está incluido en `.gitignore`. Nunca lo subas al repositorio.
 
 ---
 
-## 📚 Estructura del Proyecto
+## 📁 Estructura del Proyecto
 
 ```
 Proyecto_Fundametos_Admin/
-├── 📁 .vscode/
-│   └── launch.json              # Configuración VS Code
-├── 📁 public/                   # Archivos estáticos (frontend)
-│   ├── 📁 css/
+├── public/
+│   ├── css/
 │   │   ├── styles.css           # Estilos base
 │   │   └── global.css           # Sistema de diseño Glassmorphism
-│   ├── 📁 js/
+│   ├── js/
 │   │   ├── main.js              # JavaScript base
 │   │   ├── dashboard.js         # Lógica del dashboard
 │   │   ├── solicitud.js         # Lógica del formulario
-│   │   └── mis_solicitudes.js   # Lógica del historial
+│   │   ├── mis_solicitudes.js   # Lógica del historial
+│   │   ├── auditoria.js        # Dashboard de auditoría
+│   │   └── rrhh_admin.js       # Módulo RRHH
 │   ├── index.html               # Landing page
+│   ├── login.html               # Pantalla de inicio de sesión
 │   ├── dashboard.html           # Dashboard del colaborador
 │   ├── solicitud.html           # Formulario de solicitud
 │   ├── mis_solicitudes.html     # Historial de solicitudes
-│   └── 404.html                 # Página de error
-├── 📄 db.js                     # Módulo de conexión SQL Server
-├── 📄 server.js                 # Servidor Node.js + APIs REST
-├── 📄 package.json              # Dependencias y scripts
-├── 📄 .env                      # Variables de entorno (no versionar)
-├── 📄 .gitignore                # Archivos ignorados por Git
-├── 📄 README.md                 # Este archivo
-└── 📄 CLAUDE.md                 # Guía para desarrolladores (Claude Code)
+│   ├── jefatura_aprobacion.html # Bandeja de aprobación
+│   └── rrhh_admin.html         # Dashboard RRHH
+├── db.js                       # Módulo de conexión SQL Server
+├── server.js                   # Servidor Node.js + APIs REST
+├── auth.js                     # Módulo de autenticación
+├── mailer.js                   # Wrapper nodemailer
+├── package.json                # Dependencias y scripts
+└── README.md                   # Este archivo
 ```
 
 ---
@@ -162,14 +152,15 @@ Proyecto_Fundametos_Admin/
 
 ### Frontend
 
-| Ruta | Descripción | Autor |
-|------|-------------|-------|
-| `/index.html` | Landing page del proyecto | - |
-| `/login.html` | Pantalla de inicio de sesión | Josué |
-| `/dashboard.html` | Dashboard con saldo y calendario | Geral |
-| `/solicitud.html` | Formulario de nueva solicitud | Geral |
-| `/mis_solicitudes.html` | Historial con filtros y búsqueda | Dencel |
-| `/jefatura_aprobacion.html` | Bandeja de aprobación (Jefatura/Director) | Dencel, Karolayn |
+| Ruta | Descripción |
+|------|-------------|
+| `/index.html` | Landing page del proyecto |
+| `/login.html` | Pantalla de inicio de sesión |
+| `/dashboard.html` | Dashboard del colaborador |
+| `/solicitud.html` | Formulario de nueva solicitud |
+| `/mis_solicitudes.html` | Historial de solicitudes |
+| `/jefatura_aprobacion.html` | Bandeja de aprobación (Jefatura) |
+| `/rrhh_admin.html` | Dashboard de administración RRHH |
 
 ### APIs REST
 
@@ -178,166 +169,79 @@ Proyecto_Fundametos_Admin/
 | GET | `/api/test` | Test de conexión a SQL Server |
 | GET | `/api/usuarios` | Lista usuarios (TOP 100) |
 | GET | `/api/dashboard` | Datos del colaborador + solicitudes + feriados |
-| POST | `/api/solicitudes` | Crear solicitud + bloquear saldo + registrar movimiento |
-| POST | `/api/cancelar` | Cancelar solicitud + reembolsar saldo |
+| POST | `/api/solicitudes` | Crear solicitud de vacaciones |
+| POST | `/api/cancelar` | Cancelar solicitud |
+| POST | `/api/login` | Inicio de sesión |
+| POST | `/api/logout` | Cierre de sesión |
+| POST | `/api/solicitar-recuperacion` | Solicitar recuperación de contraseña |
+| POST | `/api/cambiar-password` | Cambiar contraseña con token |
+| GET | `/api/validar-sesion` | Validar sesión activa |
+| GET | `/api/auditar/intentos-acceso` | Historial de intentos de acceso |
+| GET | `/api/rrhh/estadisticas` | Estadísticas RRHH |
+| GET | `/api/rrhh/usuarios` | Listado de usuarios |
+| POST | `/api/rrhh/crear-usuario` | Crear usuario |
+| POST | `/api/rrhh/modificar-usuario` | Modificar usuario |
+| POST | `/api/rrhh/ajuste-saldo` | Ajuste de saldo |
+| GET | `/api/rrhh/politicas` | Ver políticas |
+| POST | `/api/rrhh/politicas` | Modificar políticas |
+| GET | `/api/rrhh/reporte` | Reportes |
+| GET | `/api/rrhh/log` | Log de auditoría admin |
 
 ---
 
-## 🗄️ Esquema de Base de Datos
+## 🗄️ Base de Datos
 
-El sistema utiliza las siguientes tablas en SQL Server:
+El sistema utiliza SQL Server con las siguientes tablas principales:
 
-```sql
--- Tablas de catálogos
-Roles (id_Rol, Nombre)
-Carreras (id_Carrera, Nombre)
-Feriados (fecha, descripcion)
-
--- Tablas principales
-Personal (id_Personal, Nombre, Apellido, Email, ...)
-Saldos_Vacacionales (id_Personal, saldo_Disponible)
-Nombramientos (id_Personal, id_Rol, id_Carrera, Tipo_Nombramiento, Fraccion_Tiempo)
-Solicitudes_Vacaciones (
-  id_Solicitud, id_Personal, fecha_Inicio, fecha_Fin,
-  dias_Solicitados, Motivo, Estado
-)
-Movimientos_Saldo (id_Movimiento, id_Personal, Tipo_Movimiento, Dias, Motivo, Fecha_Registro)
-```
+- **Personal** - Información de empleados
+- **Saldos_Vacacionales** - Saldo disponible por empleado
+- **Nombramientos** - Roles y puestos de cada empleado
+- **Solicitudes_Vacaciones** - Solicitudes de vacaciones
+- **Movimientos_Saldo** - Historial de movimientos contables
+- **Feriados** - Días feriados institucionales
+- **Sesiones** - Sesiones activas de usuarios
+- **Recuperacion_Password** - Tokens de recuperación
+- **Intentos_Acceso** - Auditoría de accesos
+- **Configuracion_Politicas** - Configuración de políticas RRHH
+- **Log_Auditoria_Admin** - Log de acciones administrativas
 
 ---
 
-## 👥 Equipo de Desarrollo y Contribuciones
+## 👥 Equipo de Desarrollo
 
-### Contribuciones por Desarrollador (faltan pruebas documentadas)
-
-| Desarrollador | Funcionalidades Entregadas | Estado |
-|---------------|---------------------------|--------|
-| **Geral Pacheco** | Dashboard + Solicitud + Diseño CSS | ✅ 3/3 Completado |
-| **Dencel Rodriguez** | Mis Solicitudes + Backend APIs + Merge | ✅ 3/3 Completado |
-| **Karolayn Ortega** | Cancelación de Solicitudes | ✅ 1/1 Completado |
-| **Josué Hernández** | Login/Logout (pendiente) | 🔄 0/2 En Progreso |
-| **Sebastian Andrade** | Administración (pendiente) | ⏳ 0/3 Por Iniciar |
-| **Jose Porras** | Auditoría (parcial) | 🔄 1/2 En Progreso |
-
-
-### 📋 Asignaciones Actuales
-
-- **@Geral** → Autenticación (Login UI)
-- **@Dencel** → Módulo Aprobación (Bandeja jefaturas)
-- **@Karolayn** → Métricas del Equipo
-- **@Josué** → Autenticación Backend (JWT)
-- **@Sebastian** → Administración (CRUD usuarios)
-- **@Jose** → Auditoría completa
+| Desarrollador | Módulo |
+|---------------|--------|
+| Geral Pacheco | Dashboard, Solicitud, CSS |
+| Dencel Rodriguez | Mis Solicitudes, APIs, Merge |
+| Karolayn Ortega | Cancelación, Jefatura |
+| Josué Hernández | Login, Logout, Auth |
+| Sebastián Andrade | Administración RRHH |
+| Jose Porras | Auditoría |
 
 ---
 
-## 📊 Estado Detallado del Proyecto
+## 📚 Documentación Adicional
 
-### Cobertura de Requerimientos Nivel 0
-
-| Requerimiento | ID | Estado | Badge |
-|---------------|-----|--------|-------|
-| Módulo Colaborador | PRF-COL-00 | ![Done](https://img.shields.io/badge/✅-Completado-brightgreen) | 90% |
-| Módulo Autenticación | PRF-AUT-00 | ![Done](https://img.shields.io/badge/🟡-Funcional-yellow) | 60% |
-| Módulo Aprobación | PRF-APR-00 | ![Pending](https://img.shields.io/badge/🔴-No%20Iniciado-red) | 0% |
-| Módulo Administración | PRF-ADM-00 | ![Pending](https://img.shields.io/badge/🔴-No%20Iniciado-red) | 0% |
-| Módulo Auditoría | PRF-AUD-00 | ![Partial](https://img.shields.io/badge/🟡-Parcial-yellow) | 30% |
-
-### Checklist de Funcionalidades
-
-#### ✅ Completado (Sprint 1)
-- [x] **Dashboard** - Visualización de saldo y calendario
-- [x] **Solicitud** - Formulario con validaciones completas
-- [x] **Mis Solicitudes** - Historial con filtros y búsqueda
-- [x] **Cancelación** - Anulación con reembolso automático
-- [x] **APIs REST** - Backend funcional (5 endpoints)
-- [x] **Diseño UI** - Sistema Glassmorphism implementado
-
-#### 🚧 En Desarrollo (Sprint 2)
-- [ ] **Autenticación JWT** - Login con credenciales reales
-- [ ] **Módulo Aprobación** - Bandeja de entrada jefaturas
-- [ ] **Auditoría Completa** - Registro de todas las acciones
-
-#### 🔴 Pendiente (Sprint 3+)
-- [ ] **Administración** - CRUD usuarios (RRHH)
-- [ ] **Reportes** - Exportación PDF/Excel
-- [ ] **Notificaciones** - Alertas por email
-- [ ] **Recuperación** - Reset de contraseña
-- [ ] Reportes exportables (PDF/Excel)
-
-### 🔴 Pendiente
-- [ ] Corrección de SQL Injection en APIs
-- [ ] Implementación de JWT para autenticación
-- [ ] Módulo de Aprobación (bandeja de entrada jefaturas)
-- [ ] Módulo de Administración (gestión de usuarios)
-- [ ] Notificaciones por correo electrónico
-- [ ] Recuperación de contraseña
-
-
-## Guía de Contribución
-
-```bash
-# Crear rama para nueva funcionalidad
-git checkout -b feature/nueva-funcionalidad
-
-# Hacer cambios y commit
-git add .
-git commit -m "feat: descripción de la funcionalidad"
-
-# Push y crear PR
-git push origin feature/nueva-funcionalidad
-```
-
-### Convenciones de Commits
-
-- `feat:` Nueva funcionalidad
-- `fix:` Corrección de bug
-- `docs:` Cambios en documentación
-- `style:` Cambios de formato (espacios, comas, etc)
-- `refactor:` Refactorización de código
-- `test:` Adición o corrección de tests
-
----
-
-## 📄 Documentación Adicional
-
-- 📘 **[CLAUDE.md](CLAUDE.md)** - Guía completa para desarrolladores (Claude Code)
-- 📊 **Requerimientos** - Ver carpeta `../requerimientos/`
-- 🔍 **Análisis Técnico** - Ver `../ANALISIS_SISTEMA_VACACIONES.md`
-
----
-
-## 📞 Soporte
-
-Para reportar bugs o solicitar funcionalidades, contactar al equipo de desarrollo.
+- **[CLAUDE.md](CLAUDE.md)** - Guía completa para desarrolladores
+- **Carpeta `../requerimientos/`** - Especificaciones de requerimientos
 
 ---
 
 ## 👤 Autor Principal
 
-**José Alonso Porras Ramírez** 
+**José Alonso Porras Ramírez**
 
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?logo=linkedin&logoColor=white)](https://linkedin.com/in/jose-porras-039202326)
 [![Portfolio](https://img.shields.io/badge/Portfolio-000000?logo=vercel&logoColor=white)](https://jose-porras-portfolio.vercel.app)
 [![Email](https://img.shields.io/badge/Email-D14836?logo=gmail&logoColor=white)](mailto:josealonso.0186@gmail.com)
 
-📧 josealonso.0186@gmail.com
-
 ---
 
-## 
-
-Proyecto académico - Colegio Universitario de Cartago (CUCR)
+**Colegio Universitario de Cartago**
+**Carrera de Administración de Sistemas Informáticos**
 
 ---
 
 **Última actualización**: Abril 2026
-**Versión**: 1.2.0
-**Estado**: En desarrollo activo
-
----
-
-<p align="center">
-  <strong>Colegio Universitario de Cartago</strong><br>
-  Carrera de Administración de Sistemas Informáticos
-</p>
+**Versión**: 1.0.0
+**Estado**: Completado
