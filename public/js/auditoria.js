@@ -227,4 +227,3 @@ function cerrarSesion() {
     localStorage.removeItem('usuario_info');
     window.location.href = '/login.html';
 }
-}
